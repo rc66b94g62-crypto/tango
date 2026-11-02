@@ -25,6 +25,8 @@
   --shadow:rgba(0,0,0,.08); --glass:rgba(250,250,252,.72); --glass-edge:rgba(255,255,255,.7);
   --menu:rgba(250,250,252,.86); --sheet:#F2F2F7; --dim:rgba(0,0,0,.32);
   --c-indigo:#5856D6; --c-teal:#0E7C86; --c-pink:#B5306F; --c-purple:#8944AB; --c-brown:#8A6A3D; --c-slate:#5B6B7B;
+  --spring:cubic-bezier(.34,1.36,.64,1); --spring-soft:cubic-bezier(.22,1.12,.36,1); --smooth:cubic-bezier(.2,.8,.2,1);
+  --recede:.9; --ctx-dim:rgba(0,0,0,.14);
 }
 @media (prefers-color-scheme: dark){
   :root{
@@ -37,6 +39,7 @@
     --shadow:rgba(0,0,0,.5); --glass:rgba(44,44,46,.66); --glass-edge:rgba(255,255,255,.14);
     --menu:rgba(44,44,46,.88); --sheet:#1C1C1E; --dim:rgba(0,0,0,.55);
     --c-indigo:#7D7AFF; --c-teal:#40C8E0; --c-pink:#FF6FA8; --c-purple:#BF5AF2; --c-brown:#C9A26B; --c-slate:#9AAABB;
+    --recede:.7; --ctx-dim:rgba(0,0,0,.4);
   }
   .sheet{--surface:#2C2C2E; --fill:#3A3A3C; --seg-bg:#3A3A3C; --sep:#48484A; --glass:rgba(58,58,60,.66);}
 }
@@ -63,7 +66,7 @@ button{touch-action:manipulation; cursor:pointer;}
 svg{display:block; flex-shrink:0;}
 [hidden]{display:none !important;}
 
-.screen{position:fixed; inset:0; display:flex; flex-direction:column;}
+.screen{position:fixed; inset:0; display:flex; flex-direction:column; background:var(--bg);}
 .scroll{flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding-top:env(safe-area-inset-top);}
 .wrap{max-width:640px; margin:0 auto;}
 .topbar{display:flex; justify-content:space-between; align-items:center; padding:8px 16px 0; min-height:52px;}
@@ -164,10 +167,12 @@ svg{display:block; flex-shrink:0;}
 .cell:last-child{border-bottom:0;}
 .cell.tight{padding-right:8px;}
 .cell-btn{display:flex; align-items:center; gap:4px; min-height:44px; padding:0 8px; border:0; background:transparent; color:var(--label2); font-size:1rem;}
-.switch{position:relative; flex-shrink:0; width:51px; height:31px; border-radius:16px; border:0; padding:0; background:var(--toggle-off); transition:background .2s;}
+.switch{position:relative; flex-shrink:0; width:51px; height:31px; border-radius:16px; border:0; padding:0; background:var(--toggle-off); transition:background .25s var(--smooth);}
 .switch[aria-checked="true"]{background:var(--toggle-on);}
-.switch::after{content:""; position:absolute; top:2px; left:2px; width:27px; height:27px; border-radius:50%; background:#fff; box-shadow:0 2px 4px rgba(0,0,0,.2); transition:transform .2s;}
+.switch::after{content:""; position:absolute; top:2px; left:2px; width:27px; height:27px; border-radius:14px; background:#fff; box-shadow:0 2px 4px rgba(0,0,0,.2); transition:transform .45s var(--spring), width .25s var(--smooth);}
 .switch[aria-checked="true"]::after{transform:translateX(20px);}
+.switch.pressing::after{width:33px;}
+.switch[aria-checked="true"].pressing::after{transform:translateX(14px);}
 
 .card-row{display:flex; align-items:center; gap:8px; padding:0 12px 0 0; border-bottom:.5px solid var(--sep);}
 .card-row:last-child{border-bottom:0;}
@@ -191,7 +196,7 @@ svg{display:block; flex-shrink:0;}
 .flip-area::after{content:""; position:absolute; left:7px; right:7px; top:8px; bottom:-7px; border-radius:28px; background:var(--stack1);}
 .flip-wrap{position:absolute; inset:0; z-index:1; touch-action:pan-y; perspective:1400px; transition:transform .2s;}
 .flip-btn{position:absolute; inset:0; padding:0; border:0; background:transparent; color:inherit; text-align:left; border-radius:28px;}
-.flip-inner{position:relative; display:block; width:100%; height:100%; transform-style:preserve-3d; -webkit-transform-style:preserve-3d; transition:transform .45s cubic-bezier(.2,.8,.2,1);}
+.flip-inner{position:relative; display:block; width:100%; height:100%; transform-style:preserve-3d; -webkit-transform-style:preserve-3d; transition:transform .75s var(--spring-flip, cubic-bezier(.3,1.25,.5,1));}
 .flipped .flip-inner{transform:rotateY(180deg);}
 .cface{position:absolute; inset:0; display:flex; flex-direction:column; border-radius:28px; overflow:hidden; background:var(--surface); box-shadow:0 1px 2px var(--shadow), 0 14px 36px var(--shadow); -webkit-backface-visibility:hidden; backface-visibility:hidden;}
 .cface.back{transform:rotateY(180deg);}
@@ -226,7 +231,7 @@ svg{display:block; flex-shrink:0;}
 
 /* シート */
 .dim{position:fixed; inset:0; background:var(--dim); z-index:20; animation:fade .2s ease-out;}
-.sheet{position:fixed; left:0; right:0; bottom:0; top:calc(env(safe-area-inset-top) + 12px); max-width:640px; margin:0 auto; background:var(--sheet); border-radius:34px 34px 0 0; z-index:21; display:flex; flex-direction:column; animation:up .32s cubic-bezier(.2,.8,.2,1); transition:transform .25s;}
+.sheet{position:fixed; left:0; right:0; bottom:0; top:calc(env(safe-area-inset-top) + 12px); max-width:640px; margin:0 auto; background:var(--sheet); border-radius:34px 34px 0 0; z-index:21; display:flex; flex-direction:column; animation:up .62s var(--spring-soft); box-shadow:0 -4px 30px rgba(0,0,0,.12);}
 .grabber-zone{padding:6px 0 0; touch-action:none;}
 .grabber{width:36px; height:5px; border-radius:3px; background:var(--chev); margin:0 auto;}
 .sheet-head{display:grid; grid-template-columns:44px 1fr 44px; gap:12px; align-items:center; padding:8px 16px 4px; touch-action:none;}
@@ -262,22 +267,54 @@ textarea.ta{display:block; width:100%; min-height:132px; border:0; outline:none;
 
 /* メニュー */
 .menu-dim{position:fixed; inset:0; z-index:30;}
-.menu{position:fixed; right:16px; top:calc(env(safe-area-inset-top) + 64px); min-width:250px; max-width:calc(100vw - 32px); padding:6px; border-radius:20px; z-index:31; background:var(--menu); -webkit-backdrop-filter:blur(30px) saturate(1.5); backdrop-filter:blur(30px) saturate(1.5); border:.5px solid var(--glass-edge); box-shadow:0 12px 40px rgba(0,0,0,.18); animation:pop .18s ease-out; transform-origin:top right;}
-.menu.bottom{top:auto; bottom:calc(env(safe-area-inset-bottom) + 74px); transform-origin:bottom right;}
+.menu{position:fixed; width:max-content; min-width:230px; max-width:calc(100vw - 32px); padding:6px; border-radius:22px; z-index:33; background:var(--menu); -webkit-backdrop-filter:blur(30px) saturate(1.5); backdrop-filter:blur(30px) saturate(1.5); border:.5px solid var(--glass-edge); box-shadow:0 12px 40px rgba(0,0,0,.18);}
+.menu button:disabled{opacity:.35;}
+.menu button span{white-space:nowrap;}
+body.dragging, body.dragging *{-webkit-user-select:none !important; user-select:none !important;}
+.ctx-dim{position:fixed; inset:0; z-index:31; background:var(--ctx-dim); -webkit-backdrop-filter:blur(14px) saturate(1.2); backdrop-filter:blur(14px) saturate(1.2);}
+.ctx-clone{position:fixed; z-index:32; margin:0; pointer-events:none; transform-origin:50% 50%;}
+.ctx-clone.card-row{background:var(--surface); border-radius:14px; border:0; box-shadow:0 18px 50px rgba(0,0,0,.22);}
+.ctx-clone.deck-row .face{box-shadow:0 18px 50px rgba(0,0,0,.22);}
+.ctx-hidden{visibility:hidden;}
 .menu button{display:flex; justify-content:space-between; align-items:center; gap:16px; width:100%; min-height:44px; padding:0 14px; border:0; background:transparent; font-size:1rem; color:var(--label); border-radius:12px; text-align:left;}
 .menu button:active{background:var(--fill);}
 .menu .destructive{color:var(--red);}
 .menu .sepline{height:.5px; background:var(--sep); margin:4px 10px;}
 
-.toast{position:fixed; left:50%; top:calc(env(safe-area-inset-top) + 12px); transform:translate(-50%, -20px); z-index:50; padding:10px 18px; border-radius:22px; font-size:.882rem; font-weight:600; opacity:0; pointer-events:none; transition:opacity .2s, transform .2s; max-width:calc(100vw - 32px); text-align:center; color:var(--label); box-shadow:0 8px 24px var(--shadow);}
-.toast.show{opacity:1; transform:translate(-50%, 0);}
+.toast{position:fixed; left:50%; top:calc(env(safe-area-inset-top) + 10px); transform:translateX(-50%); z-index:50; min-height:40px; padding:10px 20px; border-radius:22px; font-size:.882rem; font-weight:600; opacity:0; pointer-events:none; max-width:calc(100vw - 32px); text-align:center; background:#0B0B0C; color:#FFFFFF; box-shadow:0 10px 30px rgba(0,0,0,.25); display:flex; align-items:center; justify-content:center; gap:8px;}
+.toast .tx{display:block;}
+
+/* 押したときの沈み込み */
+#app{position:fixed; inset:0; overflow:hidden; background:var(--bg); transform-origin:50% 0; transition:transform .55s var(--spring-soft), border-radius .55s var(--smooth), filter .4s var(--smooth);}
+body.sheet-open{background:#000;}
+#app.receded{transform:translateY(calc(env(safe-area-inset-top) + 6px)) scale(.92); border-radius:16px; filter:brightness(var(--recede));}
+button, .deck-row{transition:transform .45s var(--spring), filter .2s, background-color .2s, opacity .2s;}
+button, .deck-row, .card-row{-webkit-touch-callout:none; -webkit-user-select:none; user-select:none;}
+.pressing{transform:scale(.96);}
+.glass-btn.pressing, .swatch.pressing{transform:scale(.86);}
+.deck-row.pressing, .row-main.pressing, .result-row.pressing{transform:scale(.98);}
+.flip-btn.pressing{transform:scale(.985);}
+.answer.pressing{transform:scale(.94);}
+.btn-primary.pressing, .glass-btn.primary.pressing{filter:brightness(.88);}
+.switch.pressing, .menu button.pressing, .seg button.pressing{transform:none;}
+.menu button.pressing{background:var(--fill);}
+.morph-hidden{opacity:0 !important; transform:scale(.6) !important;}
+.bar > span{transition:width .6s var(--spring-soft);}
+
+/* 切り替えの選択部分が滑る */
+.seg{position:relative;}
+.seg-pill{position:absolute; top:2px; bottom:2px; left:2px; width:calc((100% - 6px) / 2); border-radius:8px; background:var(--seg-on); box-shadow:0 1px 3px rgba(0,0,0,.12), 0 1px .5px rgba(0,0,0,.04); transform:translateX(calc(var(--i, 0) * (100% + 2px))); transition:transform .5s var(--spring);}
+.seg button{position:relative; z-index:1; transition:color .2s, font-weight .2s;}
+.seg button[aria-pressed="true"]{background:transparent !important; box-shadow:none !important;}
+.seg.pressing .seg-pill{transform:translateX(calc(var(--i, 0) * (100% + 2px))) scale(.95);}
 
 @keyframes fade{from{opacity:0}to{opacity:1}}
 @keyframes up{from{transform:translateY(100%)}to{transform:translateY(0)}}
 @keyframes pop{from{opacity:0; transform:scale(.92)}to{opacity:1; transform:scale(1)}}
 
 @media (prefers-reduced-transparency: reduce){
-  .glass, .menu, .toast{background:var(--surface); -webkit-backdrop-filter:none; backdrop-filter:none;}
+  .glass, .menu{background:var(--surface); -webkit-backdrop-filter:none; backdrop-filter:none;}
+  .ctx-dim{-webkit-backdrop-filter:none; backdrop-filter:none; background:rgba(0,0,0,.45);}
 }
 @media (prefers-reduced-motion: reduce){
   *, *::before, *::after{animation:none !important; transition:none !important;}
@@ -287,7 +324,8 @@ textarea.ta{display:block; width:100%; min-height:132px; border:0; outline:none;
 <body>
 <div id="app"></div>
 <div id="overlay"></div>
-<div id="toast" class="toast glass" role="status" aria-live="polite"></div>
+<div id="menu-layer"></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
 <input type="file" id="import-file" accept="application/json,.json" class="sr" tabindex="-1" aria-hidden="true">
 <script>
 'use strict';
@@ -350,6 +388,57 @@ function uid() { return Date.now().toString(36) + Math.random().toString(36).sli
 function shuffleArr(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 function pad2(n) { return String(n).padStart(2, '0'); }
 const reduceMotion = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ===== 動き（ばね・振動） ===== */
+function springCurve(bounce) {
+  // 減衰振動するばねの動きを CSS の linear() イージングに変換する（bounce 0 = 弾まない）
+  const zeta = 1 - bounce, pts = [];
+  for (let i = 0; i <= 60; i++) {
+    const t = i / 60; let x;
+    if (zeta >= 0.999) { const w = 8.5; x = 1 - (1 + w * t) * Math.exp(-w * t); }
+    else {
+      const w0 = 6.2 / zeta, wd = w0 * Math.sqrt(1 - zeta * zeta);
+      x = 1 - Math.exp(-zeta * w0 * t) * (Math.cos(wd * t) + (zeta * w0 / wd) * Math.sin(wd * t));
+    }
+    pts.push(+x.toFixed(4));
+  }
+  pts[60] = 1;
+  return 'linear(' + pts.join(', ') + ')';
+}
+const SPRING = { pop: 'cubic-bezier(.34,1.36,.64,1)', soft: 'cubic-bezier(.22,1.12,.36,1)', smooth: 'cubic-bezier(.2,.8,.2,1)', flip: 'cubic-bezier(.3,1.25,.5,1)' };
+try {
+  if (window.CSS && CSS.supports('transition-timing-function', 'linear(0, 0.5, 1)')) {
+    SPRING.pop = springCurve(0.32); SPRING.soft = springCurve(0.14); SPRING.smooth = springCurve(0); SPRING.flip = springCurve(0.2);
+    const rs = document.documentElement.style;
+    rs.setProperty('--spring', springCurve(0.28)); rs.setProperty('--spring-soft', SPRING.soft); rs.setProperty('--smooth', SPRING.smooth); rs.setProperty('--spring-flip', SPRING.flip);
+  }
+} catch (e) { /* 古いブラウザは近似のカーブを使う */ }
+
+function anim(el, frames, opts) {
+  if (!el || !el.animate || reduceMotion()) return Promise.resolve(null);
+  try {
+    const a = el.animate(frames, Object.assign({ fill: 'backwards' }, opts));
+    return a.finished.then(() => a, () => a);
+  } catch (e) { return Promise.resolve(null); }
+}
+
+// iPhone（iOS 18以降）では非表示のスイッチを押すことで軽い振動を出せる
+const haptic = (() => {
+  let lab = null;
+  return () => {
+    try {
+      if (navigator.vibrate) { navigator.vibrate(8); return; }
+      if (!lab) {
+        const id = 'hap-' + uid();
+        const inp = document.createElement('input');
+        inp.type = 'checkbox'; inp.setAttribute('switch', ''); inp.id = id; inp.className = 'sr'; inp.tabIndex = -1; inp.setAttribute('aria-hidden', 'true');
+        lab = document.createElement('label'); lab.htmlFor = id; lab.className = 'sr'; lab.setAttribute('aria-hidden', 'true');
+        document.body.append(inp, lab);
+      }
+      lab.click();
+    } catch (e) { /* 振動非対応 */ }
+  };
+})();
 
 /* ===== データ ===== */
 function makeCard(f, b, s) { return { id: uid(), f: f, b: b, s: s || '', known: false, miss: 0 }; }
@@ -417,20 +506,57 @@ const S = { data: load(), screen: 'home', deckId: null, study: null, sheet: null
 if (S.data.fresh) { delete S.data.fresh; save(); }
 
 /* ===== 画面描画 ===== */
-function render() {
+const scrollMem = {};
+function currentScreenEl() { return document.querySelector('#app > .screen:not(.leaving)'); }
+function screenHtml() {
+  if (S.screen === 'deck' && getDeck(S.deckId)) return renderDeck(getDeck(S.deckId));
+  if (S.screen === 'study' && S.study) return renderStudy();
+  S.screen = 'home'; S.deckId = null; return renderHome();
+}
+// tr: 'push'（右から入る） 'pop'（右へ戻る） 'present'（下から出る） 'dismiss'（下へ閉じる）
+function render(tr) {
   const app = document.getElementById('app');
+  const cur = currentScreenEl();
+  if (cur) { const sc = cur.querySelector('.scroll'); if (sc) scrollMem[app.dataset.key] = sc.scrollTop; }
+  app.querySelectorAll(':scope > .leaving').forEach(n => n.remove());
+  const html = screenHtml();
   const key = S.screen + ':' + (S.deckId || '');
-  const prev = app.querySelector('.scroll');
-  const top = prev && app.dataset.key === key ? prev.scrollTop : 0;
-  let html = '';
-  if (S.screen === 'deck' && getDeck(S.deckId)) html = renderDeck(getDeck(S.deckId));
-  else if (S.screen === 'study' && S.study) html = renderStudy();
-  else { S.screen = 'home'; html = renderHome(); }
-  app.innerHTML = html;
+  if (tr === 'push' || tr === 'present') scrollMem[key] = 0;
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  const neu = tmp.firstElementChild;
+  if (tr && cur && !reduceMotion()) {
+    cur.classList.add('leaving');
+    if (tr === 'push' || tr === 'present') app.appendChild(neu); else app.insertBefore(neu, cur);
+    runTransition(cur, neu, tr);
+  } else {
+    app.innerHTML = '';
+    app.appendChild(neu);
+  }
   app.dataset.key = key;
-  const sc = app.querySelector('.scroll');
-  if (sc) sc.scrollTop = top;
+  const sc = neu.querySelector('.scroll');
+  if (sc) sc.scrollTop = scrollMem[key] || 0;
   renderOverlay();
+}
+function runTransition(old, neu, tr) {
+  const dur = 560;
+  let p = Promise.resolve();
+  if (tr === 'push') {
+    neu.style.boxShadow = '-12px 0 32px rgba(0,0,0,.14)';
+    anim(neu, [{ transform: 'translateX(100%)' }, { transform: 'translateX(0)' }], { duration: dur, easing: SPRING.smooth });
+    p = anim(old, [{ transform: 'translateX(0)', filter: 'brightness(1)' }, { transform: 'translateX(-30%)', filter: 'brightness(.88)' }], { duration: dur, easing: SPRING.smooth, fill: 'forwards' });
+  } else if (tr === 'pop') {
+    old.style.boxShadow = '-12px 0 32px rgba(0,0,0,.14)';
+    anim(neu, [{ transform: 'translateX(-30%)', filter: 'brightness(.88)' }, { transform: 'translateX(0)', filter: 'brightness(1)' }], { duration: dur, easing: SPRING.smooth });
+    p = anim(old, [{ transform: 'translateX(0)' }, { transform: 'translateX(100%)' }], { duration: dur, easing: SPRING.smooth, fill: 'forwards' });
+  } else if (tr === 'present') {
+    p = anim(neu, [{ transform: 'translateY(100%)' }, { transform: 'translateY(0)' }], { duration: 620, easing: SPRING.soft });
+    anim(old, [{ transform: 'scale(1)' }, { transform: 'scale(.94)' }], { duration: 620, easing: SPRING.smooth, fill: 'forwards' });
+  } else if (tr === 'dismiss') {
+    p = anim(old, [{ transform: 'translateY(0)' }, { transform: 'translateY(100%)' }], { duration: 420, easing: 'cubic-bezier(.35,0,.7,.4)', fill: 'forwards' });
+    anim(neu, [{ transform: 'scale(.94)' }, { transform: 'scale(1)' }], { duration: 520, easing: SPRING.soft });
+  }
+  p.then(() => { old.remove(); neu.style.boxShadow = ''; });
 }
 
 function deckStyle(deck) { return '--deck: var(--c-' + esc(deck.color) + ')'; }
@@ -596,13 +722,15 @@ function renderStudy() {
 }
 
 /* --- シートとメニュー --- */
+let sheetClosing = false;
 function renderOverlay() {
   const ov = document.getElementById('overlay');
+  document.getElementById('app').classList.toggle('receded', !!S.sheet);
+  document.body.classList.toggle('sheet-open', !!S.sheet);
+  if (!S.sheet && sheetClosing) return; // 閉じるアニメーション中はそのまま
+  sheetClosing = false;
   const wasOpen = ov.dataset.sheet || '';
-  let html = '';
-  if (S.sheet) html += renderSheet();
-  if (S.menu) html += renderMenu();
-  ov.innerHTML = html;
+  ov.innerHTML = S.sheet ? renderSheet() : '';
   const now = S.sheet ? S.sheet.type + ':' + (S.sheet.key || '') : '';
   // 同じシートの再描画ではアニメーションを繰り返さない
   if (now && now === wasOpen) {
@@ -651,7 +779,7 @@ function renderSheet() {
     const body =
       '<div class="group"><label class="cell"><span class="sr">単語帳の名前</span><input class="field left" data-input="deck-name" maxlength="60" placeholder="単語帳の名前（例：ターゲット1900 Section 1）" value="' + esc(sh.name) + '"></label></div>' +
       '<p class="group-label">種類' + (lockKind ? '（カードがあるため変更できません）' : '') + '</p>' +
-      '<div class="group pad"><div class="seg" role="group" aria-label="種類">' +
+      '<div class="group pad"><div class="seg" role="group" aria-label="種類" style="--i:' + (sh.kind === 'kanji' ? 1 : 0) + '"><span class="seg-pill" aria-hidden="true"></span>' +
         ['en', 'kanji'].map(k => '<button data-action="deck-kind" data-kind="' + k + '" aria-pressed="' + (sh.kind === k) + '"' + (lockKind ? ' disabled' : '') + '>' + KINDS[k].name + '</button>').join('') +
       '</div></div>' +
       '<p class="group-label">色</p>' +
@@ -673,12 +801,112 @@ function renderSheet() {
   return '';
 }
 
-function renderMenu() {
-  const m = S.menu;
-  return '<div class="menu-dim" data-action="close-menu"></div><div class="menu ' + (m.pos || '') + '" role="menu">' +
-    m.items.map(it => it === '-' ? '<div class="sepline" role="separator"></div>' :
-      '<button role="menuitem" class="' + (it.destructive ? 'destructive' : '') + '" data-action="menu-item" data-act="' + it.act + '"><span>' + it.label + '</span>' + (it.icon || '') + '</button>').join('') +
-    '</div>';
+function menuItemsHtml(items) {
+  return items.map((it, i) => it === '-' ? '<div class="sepline" role="separator"></div>' :
+    '<button role="menuitem" class="' + (it.destructive ? 'destructive' : '') + '" data-action="menu-item" data-i="' + i + '"' + (it.disabled ? ' disabled' : '') + '><span>' + esc(it.label) + '</span>' + (it.icon || '') + '</button>').join('');
+}
+
+/* ===== メニュー（ボタンから広がる・長押しで浮き上がる） ===== */
+let menuState = null;
+function placeMenu(m, left, top, ox, oy) {
+  m.style.left = left + 'px'; m.style.top = top + 'px';
+  m.style.transformOrigin = ox + 'px ' + oy + 'px';
+}
+function staggerItems(m, fromAbove) {
+  m.querySelectorAll('button').forEach((b, i) => anim(b, [{ opacity: 0, transform: 'translateY(' + (fromAbove ? -8 : 8) + 'px)' }, { opacity: 1, transform: 'translateY(0)' }], { duration: 360, delay: 70 + i * 24, easing: SPRING.soft }));
+}
+function openMenu(anchor, items) {
+  closeMenu(true);
+  const layer = document.getElementById('menu-layer');
+  const dim = document.createElement('div'); dim.className = 'menu-dim'; dim.dataset.action = 'close-menu';
+  const m = document.createElement('div'); m.className = 'menu'; m.setAttribute('role', 'menu');
+  m.innerHTML = menuItemsHtml(items);
+  layer.append(dim, m);
+  const r = anchor.getBoundingClientRect(), vw = window.innerWidth, vh = window.innerHeight;
+  const mw = m.offsetWidth, mh = m.offsetHeight;
+  let left = r.left + r.width / 2 < vw / 2 ? r.left : r.right - mw;
+  left = Math.max(12, Math.min(left, vw - mw - 12));
+  let top = r.bottom + 8, above = false;
+  if (top + mh > vh - 12) { top = r.top - 8 - mh; above = true; }
+  top = Math.max(12, top);
+  placeMenu(m, left, top, r.left + r.width / 2 - left, r.top + r.height / 2 - top);
+  anchor.classList.add('morph-hidden');
+  menuState = { el: m, dim: dim, anchor: anchor, items: items };
+  anim(m, [{ transform: 'scale(.16)', opacity: 0, borderRadius: '40px' }, { transform: 'scale(1)', opacity: 1, borderRadius: '22px' }], { duration: 560, easing: SPRING.pop });
+  staggerItems(m, !above);
+  const first = m.querySelector('button:not(:disabled)'); if (first) first.focus({ preventScroll: true });
+}
+function openContext(row, items) {
+  closeMenu(true);
+  haptic();
+  const layer = document.getElementById('menu-layer');
+  const r = row.getBoundingClientRect(), vw = window.innerWidth, vh = window.innerHeight;
+  const dim = document.createElement('div'); dim.className = 'ctx-dim'; dim.dataset.action = 'close-menu';
+  const clone = row.cloneNode(true);
+  clone.classList.add('ctx-clone'); clone.classList.remove('pressing');
+  clone.removeAttribute('data-action'); clone.setAttribute('aria-hidden', 'true'); clone.tabIndex = -1;
+  clone.querySelectorAll('[data-action]').forEach(n => n.removeAttribute('data-action'));
+  Object.assign(clone.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
+  const m = document.createElement('div'); m.className = 'menu'; m.setAttribute('role', 'menu');
+  m.innerHTML = menuItemsHtml(items);
+  layer.append(dim, clone, m);
+  const mw = m.offsetWidth, mh = m.offsetHeight, gap = 12, edge = 16;
+  let cloneTop = r.top, below = r.bottom + gap + mh <= vh - edge;
+  if (!below && r.top - gap - mh < edge) { cloneTop = Math.max(edge, vh - edge - mh - gap - r.height); below = true; }
+  const top = below ? cloneTop + r.height + gap : r.top - gap - mh;
+  const left = Math.max(12, Math.min(r.left + 6, vw - mw - 12));
+  placeMenu(m, left, top, Math.min(40, mw / 2), below ? -gap : mh + gap);
+  row.classList.add('ctx-hidden');
+  const lift = 'translateY(' + (cloneTop - r.top) + 'px) scale(1.035)';
+  menuState = { el: m, dim: dim, clone: clone, row: row, items: items, lift: lift };
+  anim(dim, [{ opacity: 0 }, { opacity: 1 }], { duration: 260, easing: 'ease-out' });
+  anim(clone, [{ transform: 'translateY(0) scale(1)' }, { transform: lift }], { duration: 520, easing: SPRING.pop, fill: 'forwards' });
+  anim(m, [{ transform: 'scale(.25)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }], { duration: 560, delay: 30, easing: SPRING.pop });
+  staggerItems(m, below);
+}
+function closeMenu(instant) {
+  const ms = menuState; if (!ms) return Promise.resolve();
+  menuState = null;
+  const finish = () => {
+    ms.el.remove(); ms.dim.remove(); if (ms.clone) ms.clone.remove();
+    if (ms.row) ms.row.classList.remove('ctx-hidden');
+  };
+  if (ms.anchor) ms.anchor.classList.remove('morph-hidden');
+  if (instant || reduceMotion()) { finish(); return Promise.resolve(); }
+  ms.dim.style.pointerEvents = 'none'; ms.el.style.pointerEvents = 'none';
+  const ps = [anim(ms.el, [{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(.2)', opacity: 0 }], { duration: 240, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards' })];
+  if (ms.clone) {
+    ps.push(anim(ms.clone, [{ transform: ms.lift }, { transform: 'translateY(0) scale(1)' }], { duration: 380, easing: SPRING.soft, fill: 'forwards' }));
+    ps.push(anim(ms.dim, [{ opacity: 1 }, { opacity: 0 }], { duration: 300, easing: 'ease-in', fill: 'forwards' }));
+  }
+  return Promise.all(ps).then(finish);
+}
+function openContextFor(row) {
+  if (menuState && menuState.row === row) return;
+  if (row.classList.contains('deck-row')) {
+    const d = getDeck(row.dataset.id); if (!d) return;
+    const later = d.cards.length - knownCount(d);
+    openContext(row, [
+      { label: 'すべて学習', icon: I.play, disabled: !d.cards.length, run: () => startStudy(d.id, 'all') },
+      { label: 'まだだけ学習（' + later + '枚）', icon: I.again, disabled: !later, run: () => startStudy(d.id, 'later') },
+      '-',
+      { label: 'カードを追加', icon: I.cards, run: () => openAdd(d.id) },
+      { label: '単語帳を編集', icon: I.pencil, run: () => editDeck(d.id) },
+      { label: '記録をリセット', icon: I.again, run: () => resetDeck(d.id) },
+      '-',
+      { label: '単語帳を削除', icon: I.trash, destructive: true, run: () => deleteDeck(d.id) }
+    ]);
+  } else if (row.classList.contains('card-row')) {
+    const main = row.querySelector('.row-main'); if (!main) return;
+    const d = getDeck(S.deckId); const c = d && d.cards.find(x => x.id === main.dataset.id); if (!c) return;
+    openContext(row, [
+      { label: 'カードを編集', icon: I.pencil, run: () => editCard(d.id, c.id) },
+      { label: c.known ? '「まだ」に戻す' : '「覚えた」にする', icon: c.known ? I.again : I.check, run: () => toggleKnown(d.id, c.id) },
+      { label: '読み上げ', icon: I.speaker, run: () => { const K = KINDS[d.kind]; speak(K.speakIdx === 0 ? c.f : c.b, K.lang); } },
+      '-',
+      { label: 'カードを削除', icon: I.trash, destructive: true, run: () => deleteCard(d.id, c.id) }
+    ]);
+  }
 }
 
 function updateAddPreview() {
@@ -709,10 +937,37 @@ function startStudy(deckId, mode) {
   if (!items.length) { toast(mode === 'later' ? '「まだ」のカードはありません' : 'カードがありません'); return; }
   const shuffle = deckId ? getDeck(deckId).settings.shuffle : true;
   if (shuffle) shuffleArr(items);
-  S.study = { deckId: deckId, mode: mode, queue: items, total: items.length, done: 0, knownCount: 0, laterCount: 0, flipped: false, dir: deckId ? getDeck(deckId).settings.dir : 0, finished: false };
+  const from = S.screen;
+  const returnTo = from === 'study' && S.study ? S.study.returnTo : (from === 'deck' ? 'deck' : 'home');
+  S.study = { deckId: deckId, mode: mode, queue: items, total: items.length, done: 0, knownCount: 0, laterCount: 0, flipped: false, dir: deckId ? getDeck(deckId).settings.dir : 0, finished: false, returnTo: returnTo, busy: false };
   S.screen = 'study';
-  render();
+  render(from === 'study' ? null : 'present');
+  if (from === 'study') cardEnter();
   autoSpeak();
+}
+function cardEnter(prevPct) {
+  const w = document.getElementById('flip-wrap');
+  anim(w, [{ transform: 'translateY(14px) scale(.93)', opacity: 0.4 }, { transform: 'translateY(0) scale(1)', opacity: 1 }], { duration: 520, easing: SPRING.soft });
+  const bar = document.querySelector('.counter .bar > span');
+  if (bar && prevPct != null) { const to = bar.style.width; bar.style.transition = 'none'; bar.style.width = prevPct + '%'; void bar.offsetWidth; bar.style.transition = ''; bar.style.width = to; }
+  const res = document.querySelector('.result');
+  if (res) {
+    anim(res.querySelector('.stack'), [{ transform: 'translateY(40px) scale(.9)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 640, easing: SPRING.pop });
+    res.querySelectorAll('.btn').forEach((b, i) => anim(b, [{ transform: 'translateY(16px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 480, delay: 120 + i * 60, easing: SPRING.soft }));
+  }
+}
+// ボタンで仕分けたときもカードを飛ばしてから次へ
+function answerWithFly(v) {
+  const st = S.study; if (!st || st.finished || st.busy) return;
+  haptic();
+  const w = document.getElementById('flip-wrap');
+  if (!w || reduceMotion()) { answer(v); return; }
+  st.busy = true;
+  const dir = v === 'known' ? 1 : -1;
+  const tag = document.getElementById(v === 'known' ? 'tag-known' : 'tag-later');
+  if (tag) anim(tag, [{ opacity: 0, transform: 'scale(.6)' }, { opacity: 1, transform: 'scale(1)' }], { duration: 200, fill: 'forwards' });
+  anim(w, [{ transform: 'translateX(0) rotate(0deg)' }, { transform: 'translateX(' + (dir * window.innerWidth * 1.1) + 'px) rotate(' + (dir * 14) + 'deg)' }], { duration: 300, easing: 'cubic-bezier(.35,0,.75,.35)', fill: 'forwards' })
+    .then(() => { st.busy = false; answer(v); });
 }
 function answer(v) {
   const st = S.study; if (!st || st.finished || !st.queue.length) return;
@@ -726,9 +981,11 @@ function answer(v) {
     }
     save();
   }
+  const prevPct = Math.round((st.done - (v === 'known' || st.mode === 'all' ? 1 : 0)) / st.total * 100);
   st.flipped = false;
   if (!st.queue.length) st.finished = true;
   render();
+  cardEnter(prevPct);
   if (!st.finished) autoSpeak();
 }
 function speak(text, lang) {
@@ -761,21 +1018,32 @@ function flipCard() {
     const r = currentCard(); const front = st.dir === 0 ? r.card.f : r.card.b; const back = st.dir === 0 ? r.card.b : r.card.f;
     btn.setAttribute('aria-label', st.flipped ? '答え：' + back + '。タップで表に戻す' : front + '。タップして答えを表示');
   }
+  anim(document.getElementById('flip-wrap'), [{ transform: 'scale(1)' }, { transform: 'scale(1.035)', offset: 0.35 }, { transform: 'scale(1)' }], { duration: 560, easing: 'ease-out' });
   autoSpeak();
 }
 function closeStudy() {
   try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) {}
-  const back = S.study && S.study.deckId && getDeck(S.study.deckId) ? 'deck' : 'home';
-  if (back === 'deck') S.deckId = S.study.deckId;
-  S.study = null; S.screen = back; render();
+  const st = S.study;
+  const back = st && st.returnTo === 'deck' && st.deckId && getDeck(st.deckId) ? 'deck' : 'home';
+  if (back === 'deck') S.deckId = st.deckId; else S.deckId = null;
+  S.study = null; S.screen = back; render('dismiss');
 }
 
 /* ===== トースト ===== */
 let toastTimer = null;
+// 画面上部の小さな粒から広がる通知（Dynamic Island風）
 function toast(msg) {
   const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+  t.innerHTML = '<span class="tx"></span>'; t.firstChild.textContent = msg;
+  clearTimeout(toastTimer);
+  t.getAnimations && t.getAnimations().forEach(a => a.cancel());
+  t.style.opacity = '1';
+  anim(t, [{ transform: 'translateX(-50%) scale(.28, .5)', opacity: 0 }, { transform: 'translateX(-50%) scale(1)', opacity: 1 }], { duration: 600, easing: SPRING.pop });
+  anim(t.firstChild, [{ opacity: 0, filter: 'blur(4px)' }, { opacity: 1, filter: 'blur(0)' }], { duration: 260, delay: 140 });
+  toastTimer = setTimeout(() => {
+    anim(t, [{ transform: 'translateX(-50%) scale(1)', opacity: 1 }, { transform: 'translateX(-50%) scale(.28, .5)', opacity: 0 }], { duration: 300, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards' })
+      .then(a => { if (a) a.cancel(); t.style.opacity = '0'; });
+  }, 2400);
 }
 
 /* ===== バックアップ ===== */
@@ -828,84 +1096,122 @@ function openNewDeck(thenAdd) {
   renderOverlay();
   setTimeout(() => { const f = document.querySelector('[data-input="deck-name"]'); if (f) f.focus(); }, 350);
 }
+// 閉じたら true。追加の入力が残っていて取りやめたら false
 function closeSheet(force) {
-  const sh = S.sheet; if (!sh) return;
-  if (!force && sh.type === 'add' && sh.text.trim() && !confirm('入力した内容は追加されません。閉じてもよろしいですか？')) return;
-  S.sheet = null; renderOverlay();
+  const sh = S.sheet; if (!sh) return true;
+  if (!force && sh.type === 'add' && sh.text.trim() && !confirm('入力した内容は追加されません。閉じてもよろしいですか？')) return false;
+  const el = document.getElementById('sheet'), dm = document.querySelector('#overlay .dim');
+  S.sheet = null;
+  document.getElementById('overlay').dataset.sheet = '';
+  if (el && !reduceMotion()) {
+    sheetClosing = true;
+    el.style.pointerEvents = 'none'; if (dm) dm.style.pointerEvents = 'none';
+    const from = el.style.transform && el.style.transform !== 'none' ? el.style.transform : 'translateY(0)';
+    renderOverlay();
+    Promise.all([
+      anim(el, [{ transform: from }, { transform: 'translateY(100%)' }], { duration: 340, easing: 'cubic-bezier(.35,0,.75,.4)', fill: 'forwards' }),
+      anim(dm, [{ opacity: 1 }, { opacity: 0 }], { duration: 320, easing: 'ease-in', fill: 'forwards' })
+    ]).then(() => { if (sheetClosing) { sheetClosing = false; renderOverlay(); } });
+  } else renderOverlay();
+  return true;
+}
+function editDeck(id) {
+  const d = getDeck(id); if (!d) return;
+  S.sheet = { type: 'deck', key: 'edit', id: d.id, name: d.name, kind: d.kind, color: d.color }; renderOverlay();
+}
+function resetDeck(id) {
+  const d = getDeck(id); if (!d) return;
+  if (!confirm('「' + d.name + '」の記録をすべて「まだ」に戻します。よろしいですか？')) return;
+  d.cards.forEach(c => { c.known = false; c.miss = 0; }); save(); render(); toast('記録をリセットしました');
+}
+function deleteDeck(id) {
+  const d = getDeck(id); if (!d) return;
+  if (!confirm('「' + d.name + '」と、その中の' + d.cards.length + '枚のカードを削除します。この操作は取り消せません。')) return;
+  S.data.decks = S.data.decks.filter(x => x.id !== d.id); save();
+  if (S.screen === 'deck') { S.screen = 'home'; S.deckId = null; render('pop'); } else render();
+  toast('単語帳を削除しました');
+}
+function editCard(deckId, cardId) {
+  const d = getDeck(deckId); const c = d && d.cards.find(x => x.id === cardId); if (!c) return;
+  S.sheet = { type: 'card', key: c.id, deckId: d.id, cardId: c.id, f: c.f, b: c.b, s: c.s, known: c.known }; renderOverlay();
+}
+function toggleKnown(deckId, cardId) {
+  const d = getDeck(deckId); const c = d && d.cards.find(x => x.id === cardId); if (!c) return;
+  c.known = !c.known; save(); haptic(); render();
+  const b = document.querySelector('.badge[data-id="' + CSS.escape(c.id) + '"]');
+  if (b) { anim(b, [{ transform: 'scale(.7)' }, { transform: 'scale(1)' }], { duration: 480, easing: SPRING.pop }); b.focus({ preventScroll: true }); }
+}
+function deleteCard(deckId, cardId) {
+  const d = getDeck(deckId); const c = d && d.cards.find(x => x.id === cardId); if (!c) return false;
+  if (!confirm('「' + c.f + '」のカードを削除します。この操作は取り消せません。')) return false;
+  d.cards = d.cards.filter(x => x.id !== c.id); save();
+  render(); toast('カードを削除しました');
+  return true;
 }
 
 const actions = {
-  'home-menu': () => { S.menu = { pos: '', items: [
-    { label: 'バックアップを書き出す', act: 'export', icon: I.share },
-    { label: 'バックアップから読み込む', act: 'import', icon: I.download }] }; renderOverlay(); },
-  'plus': () => {
+  'home-menu': el => openMenu(el, [
+    { label: 'バックアップを書き出す', icon: I.share, run: () => exportData() },
+    { label: 'バックアップから読み込む', icon: I.download, run: () => { const f = document.getElementById('import-file'); f.value = ''; f.click(); } }]),
+  'plus': el => {
     if (!S.data.decks.length) { openNewDeck(true); return; }
-    S.menu = { pos: 'bottom', items: [
-      { label: 'カードを追加', act: 'add-cards', icon: I.cards },
-      { label: '新しい単語帳', act: 'new-deck', icon: I.stack }] };
-    renderOverlay();
+    openMenu(el, [
+      { label: 'カードを追加', icon: I.cards, run: () => openAdd(null) },
+      { label: '新しい単語帳', icon: I.stack, run: () => openNewDeck(true) }]);
   },
-  'deck-menu': () => { S.menu = { pos: '', items: [
-    { label: '単語帳を編集', act: 'edit-deck', icon: I.pencil },
-    { label: '記録をリセット', act: 'reset-deck', icon: I.again }, '-',
-    { label: '単語帳を削除', act: 'delete-deck', icon: I.trash, destructive: true }] }; renderOverlay(); },
-  'close-menu': () => { S.menu = null; renderOverlay(); },
-  'menu-item': el => { const act = el.dataset.act; S.menu = null; renderOverlay(); if (actions[act]) actions[act](el); },
-  'export': () => exportData(),
-  'import': () => { const f = document.getElementById('import-file'); f.value = ''; f.click(); },
+  'deck-menu': el => {
+    const id = S.deckId;
+    openMenu(el, [
+      { label: '単語帳を編集', icon: I.pencil, run: () => editDeck(id) },
+      { label: '記録をリセット', icon: I.again, run: () => resetDeck(id) }, '-',
+      { label: '単語帳を削除', icon: I.trash, destructive: true, run: () => deleteDeck(id) }]);
+  },
+  'close-menu': () => closeMenu(),
+  'menu-item': el => {
+    const it = menuState && menuState.items[+el.dataset.i];
+    closeMenu();
+    if (it && it.run) it.run();
+  },
   'clear-search': () => { S.search = ''; const i = document.getElementById('search'); if (i) i.value = ''; updateSearch(); },
-  'open-deck': el => { S.deckId = el.dataset.id; S.screen = 'deck'; S.search = ''; render(); },
+  'open-deck': el => { S.deckId = el.dataset.id; S.screen = 'deck'; S.search = ''; render('push'); },
   'open-card': el => {
     const deck = getDeck(el.dataset.deck); if (!deck) return;
     const c = deck.cards.find(x => x.id === el.dataset.id);
-    S.deckId = deck.id; S.screen = 'deck'; S.search = ''; render();
-    if (c) { S.sheet = { type: 'card', key: c.id, deckId: deck.id, cardId: c.id, f: c.f, b: c.b, s: c.s, known: c.known }; renderOverlay(); }
+    S.deckId = deck.id; S.screen = 'deck'; S.search = ''; render('push');
+    if (c) setTimeout(() => editCard(deck.id, c.id), 280);
   },
-  'back': () => { S.screen = 'home'; S.deckId = null; render(); },
+  'back': () => { S.screen = 'home'; S.deckId = null; render('pop'); },
   'review': () => startStudy(null, 'later'),
   'study': el => startStudy(S.deckId, el.dataset.mode),
-  'cycle-dir': () => { const d = getDeck(S.deckId); d.settings.dir = d.settings.dir ? 0 : 1; save(); render(); },
+  'cycle-dir': () => {
+    const d = getDeck(S.deckId); d.settings.dir = d.settings.dir ? 0 : 1; save(); haptic(); render();
+    const lab = document.querySelector('[data-action="cycle-dir"] span');
+    anim(lab, [{ transform: 'translateY(8px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 420, easing: SPRING.soft });
+  },
   'toggle-setting': el => {
     const d = getDeck(S.deckId); const k = el.dataset.key;
-    d.settings[k] = !d.settings[k]; save();
+    d.settings[k] = !d.settings[k]; save(); haptic();
     el.setAttribute('aria-checked', d.settings[k] ? 'true' : 'false');
   },
-  'toggle-known': el => {
-    const d = getDeck(S.deckId); const c = d && d.cards.find(x => x.id === el.dataset.id); if (!c) return;
-    c.known = !c.known; save(); render();
-    const again = document.querySelector('[data-action="toggle-known"][data-id="' + CSS.escape(c.id) + '"]'); if (again) again.focus();
-  },
-  'edit-card': el => {
-    const d = getDeck(S.deckId); const c = d && d.cards.find(x => x.id === el.dataset.id); if (!c) return;
-    S.sheet = { type: 'card', key: c.id, deckId: d.id, cardId: c.id, f: c.f, b: c.b, s: c.s, known: c.known }; renderOverlay();
-  },
+  'toggle-known': el => toggleKnown(S.deckId, el.dataset.id),
+  'edit-card': el => editCard(S.deckId, el.dataset.id),
   'add-cards': () => openAdd(S.screen === 'deck' ? S.deckId : null),
   'new-deck': () => openNewDeck(true),
-  'edit-deck': () => { const d = getDeck(S.deckId); S.sheet = { type: 'deck', key: 'edit', id: d.id, name: d.name, kind: d.kind, color: d.color }; renderOverlay(); },
-  'reset-deck': () => {
-    const d = getDeck(S.deckId);
-    if (!confirm('「' + d.name + '」の記録をすべて「まだ」に戻します。よろしいですか？')) return;
-    d.cards.forEach(c => { c.known = false; c.miss = 0; }); save(); render(); toast('記録をリセットしました');
-  },
-  'delete-deck': () => {
-    const d = getDeck(S.deckId);
-    if (!confirm('「' + d.name + '」と、その中の' + d.cards.length + '枚のカードを削除します。この操作は取り消せません。')) return;
-    S.data.decks = S.data.decks.filter(x => x.id !== d.id); save();
-    S.screen = 'home'; S.deckId = null; render(); toast('単語帳を削除しました');
-  },
   'sheet-close': () => closeSheet(false),
-  'deck-kind': el => { S.sheet.kind = el.dataset.kind; renderOverlay(); },
+  'deck-kind': el => {
+    if (S.sheet.kind === el.dataset.kind) return;
+    S.sheet.kind = el.dataset.kind; haptic();
+    const seg = el.closest('.seg');
+    seg.style.setProperty('--i', el.dataset.kind === 'kanji' ? 1 : 0);
+    seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === el ? 'true' : 'false'));
+  },
   'deck-color': el => {
-    S.sheet.color = el.dataset.color;
+    S.sheet.color = el.dataset.color; haptic();
     document.querySelectorAll('.swatch').forEach(b => b.setAttribute('aria-checked', b.dataset.color === S.sheet.color ? 'true' : 'false'));
+    anim(el, [{ transform: 'scale(.7)' }, { transform: 'scale(1)' }], { duration: 480, easing: SPRING.pop });
   },
-  'card-known': el => { S.sheet.known = !S.sheet.known; el.setAttribute('aria-checked', S.sheet.known ? 'true' : 'false'); },
-  'delete-card': () => {
-    const sh = S.sheet; const d = getDeck(sh.deckId);
-    if (!confirm('「' + sh.f + '」のカードを削除します。この操作は取り消せません。')) return;
-    d.cards = d.cards.filter(c => c.id !== sh.cardId); save();
-    S.sheet = null; render(); toast('カードを削除しました');
-  },
+  'card-known': el => { S.sheet.known = !S.sheet.known; haptic(); el.setAttribute('aria-checked', S.sheet.known ? 'true' : 'false'); },
+  'delete-card': () => { const sh = S.sheet; if (deleteCard(sh.deckId, sh.cardId)) closeSheet(true); },
   'copy-prompt': async () => {
     const d = getDeck(S.sheet.deckId); const text = KINDS[d ? d.kind : 'en'].prompt;
     try { await navigator.clipboard.writeText(text); toast('依頼文をコピーしました'); }
@@ -917,52 +1223,68 @@ const actions = {
   },
   'sheet-save': () => {
     const sh = S.sheet; if (!sh) return;
+    const from = S.screen;
     if (sh.type === 'add') {
       const deck = getDeck(sh.deckId); if (!deck) return;
       const exist = new Set(deck.cards.map(c => c.f + '\u0000' + c.b));
       const fresh = parseLines(sh.text).filter(it => !exist.has(it.f + '\u0000' + it.b));
       if (!fresh.length) return;
       fresh.forEach(it => { deck.cards.push(makeCard(it.f, it.b, it.s)); exist.add(it.f + '\u0000' + it.b); });
-      save(); S.sheet = null; S.screen = 'deck'; S.deckId = deck.id; S.search = ''; render();
+      save(); haptic(); closeSheet(true);
+      const sameDeck = from === 'deck' && S.deckId === deck.id;
+      S.screen = 'deck'; S.deckId = deck.id; S.search = '';
+      render(sameDeck ? null : 'push');
       toast(fresh.length + '枚追加しました');
     } else if (sh.type === 'deck') {
       const name = sh.name.trim();
-      if (!name) { toast('名前を入力してください'); const f = document.querySelector('[data-input="deck-name"]'); if (f) f.focus(); return; }
+      if (!name) {
+        toast('名前を入力してください');
+        const f = document.querySelector('[data-input="deck-name"]');
+        if (f) { f.focus(); anim(f.closest('.group'), [{ transform: 'translateX(0)' }, { transform: 'translateX(-10px)' }, { transform: 'translateX(8px)' }, { transform: 'translateX(-5px)' }, { transform: 'translateX(0)' }], { duration: 380, easing: 'ease-out' }); }
+        return;
+      }
       if (sh.id) {
         const d = getDeck(sh.id); d.name = name; d.color = sh.color; if (!d.cards.length) d.kind = sh.kind;
-        save(); S.sheet = null; render();
+        save(); closeSheet(true); render();
       } else {
-        const d = makeDeck(name, sh.kind, sh.color); S.data.decks.push(d); save();
+        const d = makeDeck(name, sh.kind, sh.color); S.data.decks.push(d); save(); haptic();
         S.deckId = d.id; S.screen = 'deck'; S.search = '';
-        S.sheet = sh.thenAdd ? { type: 'add', key: 'add', deckId: d.id, text: sh.pendingText || '' } : null;
-        render();
+        if (sh.thenAdd) S.sheet = { type: 'add', key: 'add-' + d.id, deckId: d.id, text: sh.pendingText || '' };
+        else closeSheet(true);
+        render(from === 'deck' ? null : 'push');
         toast('「' + name + '」を作りました');
       }
     } else if (sh.type === 'card') {
       if (!sh.f.trim() || !sh.b.trim()) { toast('表と裏は入力してください'); return; }
       const d = getDeck(sh.deckId); const c = d.cards.find(x => x.id === sh.cardId);
       if (c) { c.f = sh.f.trim(); c.b = sh.b.trim(); c.s = sh.s.trim(); c.known = sh.known; save(); }
-      S.sheet = null; render();
+      closeSheet(true); render();
     }
   },
   'flip': () => { if (Date.now() < suppressClickUntil) return; flipCard(); },
-  'answer': el => answer(el.dataset.v),
-  'speak': () => speakCurrent(),
+  'answer': el => answerWithFly(el.dataset.v),
+  'speak': el => { speakCurrent(); anim(el.querySelector('svg'), [{ transform: 'scale(1)' }, { transform: 'scale(1.25)', offset: .4 }, { transform: 'scale(1)' }], { duration: 420, easing: 'ease-out' }); },
   'study-dir': () => {
-    const st = S.study; st.dir = st.dir ? 0 : 1; st.flipped = false;
+    const st = S.study; st.dir = st.dir ? 0 : 1; st.flipped = false; haptic();
     if (st.deckId) { const d = getDeck(st.deckId); d.settings.dir = st.dir; save(); }
-    render(); autoSpeak();
+    render();
+    const w = document.getElementById('flip-wrap');
+    anim(w, [{ transform: 'rotateY(-90deg) scale(.96)', opacity: .3 }, { transform: 'rotateY(0) scale(1)', opacity: 1 }], { duration: 520, easing: SPRING.soft });
+    autoSpeak();
   },
   'study-close': () => closeStudy(),
   'again': () => startStudy(S.study.deckId, 'later')
 };
 
 document.addEventListener('click', e => {
+  if (e.target.classList && e.target.classList.contains('sr')) return; // 振動用の隠しスイッチ
+  // 長押しやスワイプの直後に指を離したときの誤タップを防ぐ
+  if (Date.now() < suppressClickUntil && !e.target.closest('#menu-layer')) { e.preventDefault(); e.stopPropagation(); return; }
   const el = e.target.closest('[data-action]');
   if (!el || el.disabled) return;
   const fn = actions[el.dataset.action];
   if (fn) { e.preventDefault(); fn(el, e); }
-});
+}, true);
 
 function updateSearch() {
   const body = document.getElementById('home-body'); if (body) body.innerHTML = renderHomeBody();
@@ -995,75 +1317,171 @@ document.addEventListener('change', e => {
 });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
-    if (S.menu) { S.menu = null; renderOverlay(); return; }
+    if (menuState) { closeMenu(); return; }
     if (S.sheet) { closeSheet(false); return; }
     if (S.screen === 'study') { closeStudy(); return; }
+    if (S.screen === 'deck') { actions.back(); return; }
   }
-  if (S.screen === 'study' && !S.sheet && S.study && !S.study.finished) {
+  if (S.screen === 'study' && !S.sheet && !menuState && S.study && !S.study.finished) {
     const tag = (e.target.tagName || '').toLowerCase();
     if (tag === 'input' || tag === 'textarea') return;
-    if (e.key === 'ArrowRight') { e.preventDefault(); answer('known'); }
-    else if (e.key === 'ArrowLeft') { e.preventDefault(); answer('later'); }
+    if (e.key === 'ArrowRight') { e.preventDefault(); answerWithFly('known'); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); answerWithFly('later'); }
     else if (e.key === ' ' && e.target.id !== 'flip') { e.preventDefault(); flipCard(); }
   }
 });
 
-/* ===== スワイプ（カードの仕分け・シートを閉じる） ===== */
-let drag = null;
+/* ===== 指の動き：押し込み・長押し・カードの仕分け・シートを下げる・左端から戻る ===== */
+let drag = null, lp = null, pressed = null;
 let suppressClickUntil = 0;
+function unpress() { if (pressed) { pressed.classList.remove('pressing'); pressed = null; } }
+function setDragging(on) {
+  document.body.classList.toggle('dragging', on);
+  if (on) { try { const sel = window.getSelection(); if (sel) sel.removeAllRanges(); } catch (e) {} }
+}
+function cancelLongPress() { if (lp) { clearTimeout(lp.timer); lp = null; } }
+
 document.addEventListener('pointerdown', e => {
+  if (e.button !== undefined && e.button !== 0) return;
+  // 押し込み
+  const pb = e.target.closest('button, .deck-row');
+  if (pb && !pb.disabled) { unpress(); pressed = pb; pb.classList.add('pressing'); }
+  // 長押しメニュー
+  const row = e.target.closest('.deck-row, .card-row');
+  cancelLongPress();
+  if (row && !e.target.closest('.badge') && !menuState && !S.sheet && !row.closest('#menu-layer')) {
+    lp = { x: e.clientX, y: e.clientY, timer: setTimeout(() => {
+      lp = null; unpress(); suppressClickUntil = Date.now() + 800; openContextFor(row);
+    }, 460) };
+  }
+  if (menuState) return;
+  // 画面の左端から右へなぞって戻る
+  if (S.screen === 'deck' && !S.sheet && e.clientX <= 24) {
+    const cur = currentScreenEl();
+    if (cur) { if (e.pointerType === 'mouse') e.preventDefault(); drag = { kind: 'edge', x: e.clientX, y: e.clientY, dx: 0, moved: false, cur: cur, under: null, id: e.pointerId, lastX: e.clientX, lastT: e.timeStamp, v: 0 }; return; }
+  }
   const w = e.target.closest('#flip-wrap');
-  if (w && S.study && !S.study.finished) { drag = { kind: 'card', x: e.clientX, y: e.clientY, dx: 0, moved: false, w: w, id: e.pointerId }; return; }
+  if (w && S.study && !S.study.finished && !S.study.busy) { drag = { kind: 'card', x: e.clientX, y: e.clientY, dx: 0, moved: false, w: w, id: e.pointerId, lastX: e.clientX, lastT: e.timeStamp, v: 0, armed: false }; return; }
   const sz = e.target.closest('[data-drag="sheet"]');
-  if (sz && !e.target.closest('button')) { const sh = document.getElementById('sheet'); if (sh) drag = { kind: 'sheet', y: e.clientY, dy: 0, el: sh, id: e.pointerId }; }
+  if (sz && !e.target.closest('button')) { const sh = document.getElementById('sheet'); if (sh) drag = { kind: 'sheet', y: e.clientY, dy: 0, el: sh, id: e.pointerId, lastY: e.clientY, lastT: e.timeStamp, v: 0 }; }
 });
+
 document.addEventListener('pointermove', e => {
+  if (lp && Math.hypot(e.clientX - lp.x, e.clientY - lp.y) > 8) { cancelLongPress(); }
+  if (pressed && drag && drag.moved) unpress();
   if (!drag || e.pointerId !== drag.id) return;
+  const dt = Math.max(1, e.timeStamp - drag.lastT);
   if (drag.kind === 'card') {
     const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
     if (!drag.moved && Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) {
-      drag.moved = true; drag.w.style.transition = 'none';
+      drag.moved = true; drag.w.style.transition = 'none'; unpress(); cancelLongPress(); setDragging(true);
       try { drag.w.setPointerCapture(drag.id); } catch (er) {}
     }
     if (drag.moved) {
+      drag.v = (e.clientX - drag.lastX) / dt; drag.lastX = e.clientX; drag.lastT = e.timeStamp;
       drag.dx = dx;
-      drag.w.style.transform = 'translateX(' + dx + 'px) rotate(' + (dx / 25) + 'deg)';
+      drag.w.style.transform = 'translateX(' + dx + 'px) translateY(' + (Math.abs(dx) * 0.04) + 'px) rotate(' + (dx / 22) + 'deg)';
       const tk = document.getElementById('tag-known'), tl = document.getElementById('tag-later');
-      if (tk) tk.style.opacity = Math.max(0, Math.min(1, dx / 90));
-      if (tl) tl.style.opacity = Math.max(0, Math.min(1, -dx / 90));
+      const pk = Math.max(0, Math.min(1, dx / 90)), pl = Math.max(0, Math.min(1, -dx / 90));
+      if (tk) { tk.style.opacity = pk; tk.style.transform = 'scale(' + (0.7 + 0.3 * pk) + ')'; }
+      if (tl) { tl.style.opacity = pl; tl.style.transform = 'scale(' + (0.7 + 0.3 * pl) + ')'; }
+      const armed = Math.abs(dx) > 90;
+      if (armed !== drag.armed) { drag.armed = armed; if (armed) haptic(); }
     }
   } else if (drag.kind === 'sheet') {
-    drag.dy = Math.max(0, e.clientY - drag.y);
-    drag.el.style.transition = 'none'; drag.el.style.transform = 'translateY(' + drag.dy + 'px)';
+    const raw = e.clientY - drag.y;
+    drag.v = (e.clientY - drag.lastY) / dt; drag.lastY = e.clientY; drag.lastT = e.timeStamp;
+    drag.dy = raw > 0 ? raw : -Math.pow(-raw, 0.7); // 上方向は抵抗をかける
+    drag.el.style.transform = 'translateY(' + drag.dy + 'px)';
+  } else if (drag.kind === 'edge') {
+    const dx = Math.max(0, e.clientX - drag.x), dy = e.clientY - drag.y;
+    if (!drag.moved) {
+      if (dx > 8 && dx > Math.abs(dy)) {
+        drag.moved = true; unpress(); cancelLongPress(); setDragging(true);
+        try { drag.cur.setPointerCapture(drag.id); } catch (er) {}
+        const tmp = document.createElement('div'); tmp.innerHTML = renderHome();
+        drag.under = tmp.firstElementChild; drag.under.style.pointerEvents = 'none';
+        document.getElementById('app').insertBefore(drag.under, drag.cur);
+        const sc = drag.under.querySelector('.scroll'); if (sc) sc.scrollTop = scrollMem['home:'] || 0;
+        drag.cur.style.boxShadow = '-12px 0 32px rgba(0,0,0,.14)';
+      } else return;
+    }
+    drag.v = (e.clientX - drag.lastX) / dt; drag.lastX = e.clientX; drag.lastT = e.timeStamp;
+    drag.dx = dx;
+    const p = Math.min(1, dx / window.innerWidth);
+    drag.cur.style.transform = 'translateX(' + dx + 'px)';
+    drag.under.style.transform = 'translateX(' + (-30 * (1 - p)) + '%)';
+    drag.under.style.filter = 'brightness(' + (0.88 + 0.12 * p) + ')';
   }
 });
+
 function endDrag(e) {
+  cancelLongPress();
+  unpress();
   if (!drag || (e && e.pointerId !== drag.id)) return;
   const d = drag; drag = null;
+  setDragging(false);
   if (d.kind === 'card') {
     if (!d.moved) return;
-    suppressClickUntil = Date.now() + 400;
-    const resetTags = () => { ['tag-known', 'tag-later'].forEach(id => { const t = document.getElementById(id); if (t) t.style.opacity = 0; }); };
-    if (Math.abs(d.dx) > 90) {
-      const dir = d.dx > 0 ? 1 : -1;
-      if (reduceMotion()) { answer(dir > 0 ? 'known' : 'later'); return; }
-      d.w.style.transition = 'transform .22s ease-in';
-      d.w.style.transform = 'translateX(' + (dir * window.innerWidth) + 'px) rotate(' + (dir * 18) + 'deg)';
-      setTimeout(() => answer(dir > 0 ? 'known' : 'later'), 200);
+    suppressClickUntil = Date.now() + 350;
+    const resetTags = () => { ['tag-known', 'tag-later'].forEach(id => { const t = document.getElementById(id); if (t) { t.style.opacity = 0; t.style.transform = ''; } }); };
+    const fling = Math.abs(d.v) > 0.6 && Math.abs(d.dx) > 40 && Math.sign(d.v) === Math.sign(d.dx);
+    if (Math.abs(d.dx) > 90 || fling) {
+      const dir = d.dx > 0 ? 1 : -1, v = dir > 0 ? 'known' : 'later';
+      if (!d.armed) haptic();
+      if (reduceMotion()) { answer(v); return; }
+      S.study.busy = true;
+      d.w.style.transition = 'transform .26s cubic-bezier(.3,0,.8,.5)';
+      d.w.style.transform = 'translateX(' + (dir * window.innerWidth * 1.15) + 'px) rotate(' + (dir * 20) + 'deg)';
+      setTimeout(() => { S.study.busy = false; answer(v); }, 230);
     } else {
-      d.w.style.transition = 'transform .2s'; d.w.style.transform = ''; resetTags();
+      d.w.style.transition = 'transform .5s var(--spring)'; d.w.style.transform = ''; resetTags();
     }
   } else if (d.kind === 'sheet') {
-    d.el.style.transition = '';
-    if (d.dy > 120) { d.el.style.transform = 'translateY(100%)'; setTimeout(() => { d.el.style.transform = ''; closeSheet(false); if (S.sheet) renderOverlay(); }, 200); }
-    else d.el.style.transform = '';
+    if (d.dy > 140 || (d.v > 0.6 && d.dy > 40)) {
+      if (!closeSheet(false)) anim(d.el, [{ transform: d.el.style.transform }, { transform: 'translateY(0)' }], { duration: 500, easing: SPRING.soft }).then(() => { d.el.style.transform = ''; });
+    } else {
+      const from = d.el.style.transform; d.el.style.transform = '';
+      anim(d.el, [{ transform: from || 'translateY(0)' }, { transform: 'translateY(0)' }], { duration: 520, easing: SPRING.soft });
+    }
+  } else if (d.kind === 'edge') {
+    if (!d.moved) return;
+    suppressClickUntil = Date.now() + 350;
+    const W = window.innerWidth;
+    const commit = d.dx > W * 0.35 || d.v > 0.5;
+    const curFrom = d.cur.style.transform, underFrom = d.under.style.transform, underF = d.under.style.filter;
+    if (commit) {
+      Promise.all([
+        anim(d.cur, [{ transform: curFrom }, { transform: 'translateX(100%)' }], { duration: 380, easing: SPRING.smooth, fill: 'forwards' }),
+        anim(d.under, [{ transform: underFrom, filter: underF }, { transform: 'translateX(0)', filter: 'brightness(1)' }], { duration: 380, easing: SPRING.smooth, fill: 'forwards' })
+      ]).then(() => { S.screen = 'home'; S.deckId = null; render(); });
+      if (reduceMotion()) { S.screen = 'home'; S.deckId = null; render(); }
+    } else {
+      Promise.all([
+        anim(d.cur, [{ transform: curFrom }, { transform: 'translateX(0)' }], { duration: 420, easing: SPRING.soft }),
+        anim(d.under, [{ transform: underFrom, filter: underF }, { transform: 'translateX(-30%)', filter: 'brightness(.88)' }], { duration: 420, easing: SPRING.soft })
+      ]).then(() => { d.under.remove(); d.cur.style.transform = ''; d.cur.style.boxShadow = ''; });
+      d.cur.style.transform = '';
+    }
   }
 }
 document.addEventListener('pointerup', endDrag);
 document.addEventListener('pointercancel', endDrag);
+document.addEventListener('contextmenu', e => {
+  const row = e.target.closest('.deck-row, .card-row');
+  if (!row || row.closest('#menu-layer')) return;
+  e.preventDefault(); cancelLongPress(); unpress();
+  suppressClickUntil = Date.now() + 500;
+  openContextFor(row);
+});
 
 /* ===== 起動 ===== */
 render();
+(function intro() {
+  if (reduceMotion()) return;
+  document.querySelectorAll('#app .lt, #app .hero, #app .section-title, #app .deck-row, #app .bottombar > *')
+    .forEach((el, i) => anim(el, [{ opacity: 0, transform: 'translateY(18px)' }, { opacity: 1, transform: 'translateY(0)' }], { duration: 600, delay: 40 + i * 45, easing: SPRING.soft }));
+})();
 if (navigator.storage && navigator.storage.persist) { navigator.storage.persist().catch(() => {}); }
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
   window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(() => {}); });
