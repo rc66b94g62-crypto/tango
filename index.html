@@ -26,7 +26,8 @@
   --menu:rgba(250,250,252,.86); --sheet:#F2F2F7; --dim:rgba(0,0,0,.32);
   --c-indigo:#5856D6; --c-teal:#0E7C86; --c-pink:#B5306F; --c-purple:#8944AB; --c-brown:#8A6A3D; --c-slate:#5B6B7B;
   --spring:cubic-bezier(.34,1.36,.64,1); --spring-soft:cubic-bezier(.22,1.12,.36,1); --smooth:cubic-bezier(.2,.8,.2,1);
-  --recede:.9; --ctx-dim:rgba(0,0,0,.14);
+  --recede:.9; --ctx-dim:rgba(0,0,0,.14); --on-deck:#FFFFFF;
+  --flip-dur:.3s; --flip-ease:cubic-bezier(.25,1.08,.4,1);
 }
 @media (prefers-color-scheme: dark){
   :root{
@@ -39,7 +40,7 @@
     --shadow:rgba(0,0,0,.5); --glass:rgba(44,44,46,.66); --glass-edge:rgba(255,255,255,.14);
     --menu:rgba(44,44,46,.88); --sheet:#1C1C1E; --dim:rgba(0,0,0,.55);
     --c-indigo:#7D7AFF; --c-teal:#40C8E0; --c-pink:#FF6FA8; --c-purple:#BF5AF2; --c-brown:#C9A26B; --c-slate:#9AAABB;
-    --recede:.7; --ctx-dim:rgba(0,0,0,.4);
+    --recede:.7; --ctx-dim:rgba(0,0,0,.4); --on-deck:#000000;
   }
   .sheet{--surface:#2C2C2E; --fill:#3A3A3C; --seg-bg:#3A3A3C; --sep:#48484A; --glass:rgba(58,58,60,.66);}
 }
@@ -196,8 +197,15 @@ svg{display:block; flex-shrink:0;}
 .flip-area::after{content:""; position:absolute; left:7px; right:7px; top:8px; bottom:-7px; border-radius:28px; background:var(--stack1);}
 .flip-wrap{position:absolute; inset:0; z-index:1; touch-action:pan-y; perspective:1400px; transition:transform .2s;}
 .flip-btn{position:absolute; inset:0; padding:0; border:0; background:transparent; color:inherit; text-align:left; border-radius:28px;}
-.flip-inner{position:relative; display:block; width:100%; height:100%; transform-style:preserve-3d; -webkit-transform-style:preserve-3d; transition:transform .75s var(--spring-flip, cubic-bezier(.3,1.25,.5,1));}
+.flip-inner{position:relative; display:block; width:100%; height:100%; transform-style:preserve-3d; -webkit-transform-style:preserve-3d; transition:transform var(--flip-dur) var(--flip-ease);}
 .flipped .flip-inner{transform:rotateY(180deg);}
+html[data-flip="x"] .flipped .flip-inner{transform:rotateX(180deg);}
+html[data-flip="x"] .cface.back{transform:rotateX(180deg);}
+html[data-flip="fade"] .flip-inner, html[data-flip="fade"] .flipped .flip-inner{transform:none; transform-style:flat; -webkit-transform-style:flat;}
+html[data-flip="fade"] .cface{-webkit-backface-visibility:visible; backface-visibility:visible; transition:opacity var(--flip-dur) ease, transform var(--flip-dur) var(--flip-ease);}
+html[data-flip="fade"] .cface.back{transform:scale(.95); opacity:0;}
+html[data-flip="fade"] .flipped .cface.back{transform:none; opacity:1;}
+html[data-flip="fade"] .flipped .cface.front{transform:scale(1.04); opacity:0;}
 .cface{position:absolute; inset:0; display:flex; flex-direction:column; border-radius:28px; overflow:hidden; background:var(--surface); box-shadow:0 1px 2px var(--shadow), 0 14px 36px var(--shadow); -webkit-backface-visibility:hidden; backface-visibility:hidden;}
 .cface.back{transform:rotateY(180deg);}
 .cface .band{height:10px; flex-shrink:0;}
@@ -205,7 +213,13 @@ svg{display:block; flex-shrink:0;}
 .cface.front .hole{left:22px;} .cface.back .hole{right:22px;}
 .cface .body{flex:1; min-height:0; padding:20px 24px 22px; display:flex; flex-direction:column; gap:8px;}
 .cface .fl{font-size:.765rem; font-weight:600; color:var(--label2);}
-.cface.front .fl{padding-left:28px;}
+.side-row{display:flex; align-items:center; gap:8px; min-height:24px;}
+.cface.front .side-row{padding-left:28px;}
+.side-chip{display:inline-flex; align-items:center; justify-content:center; min-width:30px; height:24px; padding:0 9px; border-radius:12px; font-size:.765rem; font-weight:700; letter-spacing:.04em; border:1.5px solid var(--sep); color:var(--label2); flex-shrink:0;}
+.side-chip.back-chip{background:var(--deck); border-color:var(--deck); color:var(--on-deck);}
+.cface.back{background:var(--surface); background:color-mix(in srgb, var(--deck) 10%, var(--surface));}
+.cface.back .band{height:14px;}
+.cface.back .divider{background:color-mix(in srgb, var(--deck) 30%, var(--sep));}
 .cface .word{flex:1; display:flex; align-items:center; justify-content:center; text-align:center; font-weight:700; line-height:1.2; overflow-wrap:anywhere; overflow:auto;}
 .cface .hint{text-align:center; font-size:.765rem; color:var(--label2);}
 .cface .small{font-size:1rem; color:var(--label2); overflow-wrap:anywhere;}
@@ -247,7 +261,7 @@ svg{display:block; flex-shrink:0;}
 .cell-label{flex-shrink:0;}
 select.select{-webkit-appearance:none; appearance:none; border:0; background:transparent; color:var(--label2); font-size:1rem; text-align:right; text-align-last:right; padding:12px 26px 12px 0; max-width:65%; outline:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='16' viewBox='0 0 10 16' fill='none' stroke='%238E8E93' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 6l3-3 3 3M2 10l3 3 3-3'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 6px center;}
 textarea.ta{display:block; width:100%; min-height:132px; border:0; outline:none; resize:vertical; padding:10px 12px; font-size:1rem; line-height:1.6; color:var(--label); background:transparent; font-family:ui-monospace, "SF Mono", Menlo, monospace;}
-.seg{display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:2px; background:var(--seg-bg); border-radius:10px; padding:2px;}
+.seg{display:grid; grid-template-columns:repeat(var(--n, 2), minmax(0,1fr)); gap:2px; background:var(--seg-bg); border-radius:10px; padding:2px;}
 .seg button{min-height:32px; border:0; border-radius:8px; background:transparent; color:var(--seg-off); font-size:.882rem;}
 .seg button[aria-pressed="true"]{background:var(--seg-on); color:var(--label); font-weight:600; box-shadow:0 1px 3px rgba(0,0,0,.12);}
 .seg button:disabled{opacity:.5;}
@@ -303,7 +317,7 @@ button, .deck-row, .card-row{-webkit-touch-callout:none; -webkit-user-select:non
 
 /* 切り替えの選択部分が滑る */
 .seg{position:relative;}
-.seg-pill{position:absolute; top:2px; bottom:2px; left:2px; width:calc((100% - 6px) / 2); border-radius:8px; background:var(--seg-on); box-shadow:0 1px 3px rgba(0,0,0,.12), 0 1px .5px rgba(0,0,0,.04); transform:translateX(calc(var(--i, 0) * (100% + 2px))); transition:transform .5s var(--spring);}
+.seg-pill{position:absolute; top:2px; bottom:2px; left:2px; width:calc((100% - 4px - (var(--n, 2) - 1) * 2px) / var(--n, 2)); border-radius:8px; background:var(--seg-on); box-shadow:0 1px 3px rgba(0,0,0,.12), 0 1px .5px rgba(0,0,0,.04); transform:translateX(calc(var(--i, 0) * (100% + 2px))); transition:transform .5s var(--spring);}
 .seg button{position:relative; z-index:1; transition:color .2s, font-weight .2s;}
 .seg button[aria-pressed="true"]{background:transparent !important; box-shadow:none !important;}
 .seg.pressing .seg-pill{transform:translateX(calc(var(--i, 0) * (100% + 2px))) scale(.95);}
@@ -317,8 +331,38 @@ button, .deck-row, .card-row{-webkit-touch-callout:none; -webkit-user-select:non
   .ctx-dim{-webkit-backdrop-filter:none; backdrop-filter:none; background:rgba(0,0,0,.45);}
 }
 @media (prefers-reduced-motion: reduce){
-  *, *::before, *::after{animation:none !important; transition:none !important;}
+  *:not(.flip-inner):not(.cface), *::before, *::after{animation:none !important; transition:none !important;}
 }
+body.no-motion *:not(.flip-inner):not(.cface), body.no-motion *::before, body.no-motion *::after{animation:none !important; transition:none !important;}
+
+/* 設定画面 */
+.set-head{padding:2px 20px 4px;}
+.set-head h1{margin:0; font-size:2rem; line-height:1.2; font-weight:700;}
+.set-label{display:block; margin:26px 32px 7px; font-size:.765rem; color:var(--label2);}
+.set-foot{margin:7px 32px 0; font-size:.765rem; line-height:1.5; color:var(--label2);}
+.cell-col{display:flex; flex-direction:column; gap:10px; padding:12px 16px 14px; border-bottom:.5px solid var(--sep);}
+.cell-col:last-child{border-bottom:0;}
+.cell-col .cell-top{display:flex; justify-content:space-between; align-items:baseline; gap:12px;}
+.cell-col .val{color:var(--label2); font-variant-numeric:tabular-nums;}
+.dep{transition:opacity .25s;}
+.dep.off{opacity:.38;}
+.slider-row{display:flex; align-items:center; gap:10px; font-size:.765rem; color:var(--label2);}
+.slider{flex:1; min-width:0; height:30px; margin:0; accent-color:var(--accent);}
+.row-btn{display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; min-height:48px; padding:0 16px; border:0; border-bottom:.5px solid var(--sep); background:transparent; color:var(--accent); font-size:1rem; text-align:left;}
+.row-btn:last-child{border-bottom:0;}
+.pv-wrap{padding:16px 16px 4px; perspective:1000px;}
+.pv-flip{position:relative; display:block; width:100%; height:150px; padding:0; border:0; background:transparent; color:inherit; text-align:left; border-radius:20px;}
+.pv-flip .cface{border-radius:20px; box-shadow:0 1px 2px var(--shadow), 0 6px 18px var(--shadow);}
+.pv-flip .cface .band{height:6px;}
+.pv-flip .cface.back .band{height:9px;}
+.pv-flip .cface .hole{top:19px; width:12px; height:12px;}
+.pv-flip .cface.front .hole{left:16px;} .pv-flip .cface.back .hole{right:16px;}
+.pv-flip .cface .body{padding:10px 16px 12px; gap:4px;}
+.pv-flip .cface.front .side-row{padding-left:22px;}
+.pv-flip .word{font-size:1.6rem;}
+.pv-cap{margin:8px 0 12px; text-align:center; font-size:.765rem; color:var(--label2);}
+.gear svg{transition:transform .5s var(--spring);}
+.gear.pressing svg{transform:rotate(-40deg);}
 </style>
 </head>
 <body>
@@ -355,6 +399,7 @@ const KINDS = {
 
 /* ===== アイコン ===== */
 const I = {
+  gear: '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>',
   more: '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>',
   back: '<svg width="11" height="19" viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2L2 10l8 8"/></svg>',
   close: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
@@ -387,7 +432,30 @@ function esc(s) {
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
 function shuffleArr(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 function pad2(n) { return String(n).padStart(2, '0'); }
-const reduceMotion = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const PREF_KEY = 'tango.prefs.v1';
+const PREF_DEFAULT = { flipMotion: true, flipStyle: 'y', flipDur: 0.3, motion: true, haptics: true };
+const FLIP_STYLES = [{ key: 'y', name: '横に回転' }, { key: 'x', name: '縦に回転' }, { key: 'fade', name: 'ふわっと' }];
+function loadPrefs() {
+  const p = Object.assign({}, PREF_DEFAULT);
+  try {
+    const r = JSON.parse(localStorage.getItem(PREF_KEY) || '{}') || {};
+    ['flipMotion', 'motion', 'haptics'].forEach(k => { if (typeof r[k] === 'boolean') p[k] = r[k]; });
+    if (FLIP_STYLES.some(f => f.key === r.flipStyle)) p.flipStyle = r.flipStyle;
+    const d = Number(r.flipDur); if (d >= 0.1 && d <= 0.8) p.flipDur = Math.round(d * 20) / 20;
+  } catch (e) { /* 初期値を使う */ }
+  return p;
+}
+const P = loadPrefs();
+function savePrefs() { try { localStorage.setItem(PREF_KEY, JSON.stringify(P)); } catch (e) {} }
+const systemReduce = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+const reduceMotion = () => !P.motion || systemReduce();
+function applyPrefs() {
+  const root = document.documentElement;
+  // iPhoneで「視差効果を減らす」がオンなら、回転ではなく切り替えにする
+  root.dataset.flip = systemReduce() ? 'fade' : P.flipStyle;
+  root.style.setProperty('--flip-dur', P.flipMotion ? P.flipDur + 's' : '0s');
+  document.body.classList.toggle('no-motion', !P.motion);
+}
 
 /* ===== 動き（ばね・振動） ===== */
 function springCurve(bounce) {
@@ -426,6 +494,7 @@ function anim(el, frames, opts) {
 const haptic = (() => {
   let lab = null;
   return () => {
+    if (!P.haptics) return;
     try {
       if (navigator.vibrate) { navigator.vibrate(8); return; }
       if (!lab) {
@@ -511,6 +580,7 @@ function currentScreenEl() { return document.querySelector('#app > .screen:not(.
 function screenHtml() {
   if (S.screen === 'deck' && getDeck(S.deckId)) return renderDeck(getDeck(S.deckId));
   if (S.screen === 'study' && S.study) return renderStudy();
+  if (S.screen === 'settings') return renderSettings();
   S.screen = 'home'; S.deckId = null; return renderHome();
 }
 // tr: 'push'（右から入る） 'pop'（右へ戻る） 'present'（下から出る） 'dismiss'（下へ閉じる）
@@ -586,7 +656,7 @@ function renderHome() {
       '<p class="muted" style="margin:4px 0 0">「まだ」のカードはありません。新しいカードを追加するか、単語帳を開いて「すべて学習」で確認できます。</p></div></div></section>';
   }
   return '<div class="screen"><div class="scroll"><div class="wrap">' +
-    '<div class="topbar"><span></span><button class="glass glass-btn" data-action="home-menu" aria-label="その他の操作" aria-haspopup="menu">' + I.more + '</button></div>' +
+    '<div class="topbar"><span></span><button class="glass glass-btn gear" data-action="open-settings" aria-label="設定">' + I.gear + '</button></div>' +
     '<header class="lt"><h1>単語帳</h1><p class="sub">' + decks.length + '冊 ・ ' + total + '枚</p></header>' +
     '<div id="hero"' + (S.search ? ' hidden' : '') + '>' + hero + '</div>' +
     '<div id="home-body">' + renderHomeBody() + '</div>' +
@@ -625,6 +695,73 @@ function renderHomeBody() {
       '<span class="progress"><span class="bar"><span style="width:' + pct + '%"></span></span><span class="num">' + k + ' / ' + t + '</span></span></span>' +
       '<span class="chev-cell" aria-hidden="true">' + I.chev + '</span></span></button>';
   }).join('') + '</div>';
+}
+
+/* --- 設定 --- */
+function prefSwitch(key, label) {
+  return '<div class="cell"><span id="lbl-p-' + key + '">' + label + '</span>' +
+    '<button class="switch" role="switch" aria-labelledby="lbl-p-' + key + '" aria-checked="' + (P[key] ? 'true' : 'false') + '" data-action="pref-toggle" data-key="' + key + '"></button></div>';
+}
+function renderSettings() {
+  const off = P.flipMotion ? '' : ' off';
+  const dis = P.flipMotion ? '' : ' disabled';
+  const si = FLIP_STYLES.findIndex(f => f.key === P.flipStyle);
+  const preview =
+    '<div class="pv-wrap" style="--deck: var(--c-indigo)">' +
+      '<button class="pv-flip" id="pv-flip" data-action="pv-flip" aria-label="お試しカード。タップするとめくれます">' +
+        '<span class="flip-inner">' +
+          '<span class="cface front"><span class="band" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><span class="body">' +
+            '<span class="side-row"><span class="side-chip">表</span><span class="fl">英単語</span></span>' +
+            '<span class="word rounded">abandon</span></span></span>' +
+          '<span class="cface back"><span class="band" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><span class="body">' +
+            '<span class="side-row"><span class="side-chip back-chip">裏</span><span class="fl">日本語</span></span>' +
+            '<span class="word rounded">捨てる、断念する</span></span></span>' +
+        '</span>' +
+      '</button>' +
+      '<p class="pv-cap">タップすると、今の設定でめくれます</p>' +
+    '</div>';
+  return '<div class="screen"><div class="scroll"><div class="wrap">' +
+    '<div class="topbar"><button class="glass glass-btn" data-action="back" aria-label="単語帳一覧に戻る">' + I.back + '</button><span></span></div>' +
+    '<header class="set-head"><h1>設定</h1></header>' +
+
+    '<span class="set-label">カードをめくる動き</span>' +
+    '<div class="group">' + preview +
+      '<div style="border-top:.5px solid var(--sep)">' + prefSwitch('flipMotion', 'めくる動き') + '</div>' +
+      '<div class="cell-col dep' + off + '" id="dep-style"><span>動きの種類</span>' +
+        '<div class="seg" role="group" aria-label="動きの種類" style="--n:3; --i:' + si + '"><span class="seg-pill" aria-hidden="true"></span>' +
+          FLIP_STYLES.map(f => '<button data-action="flip-style" data-style="' + f.key + '" aria-pressed="' + (f.key === P.flipStyle) + '"' + dis + '>' + f.name + '</button>').join('') +
+        '</div></div>' +
+      '<div class="cell-col dep' + off + '" id="dep-dur"><span class="cell-top"><label for="flip-dur">長さ</label><span class="val" id="flip-dur-val">' + P.flipDur.toFixed(2) + '秒</span></span>' +
+        '<span class="slider-row"><span aria-hidden="true">速い</span><input class="slider" id="flip-dur" type="range" min="0.1" max="0.8" step="0.05" value="' + P.flipDur + '"' + dis + '><span aria-hidden="true">ゆっくり</span></span></div>' +
+    '</div>' +
+    '<p class="set-foot">「めくる動き」をオフにすると、表と裏がすぐに切り替わります。おすすめの長さは0.30秒です。' +
+      (systemReduce() ? 'iPhoneの「視差効果を減らす」がオンのため、種類は「ふわっと」で表示されます。' : '') + '</p>' +
+
+    '<span class="set-label">アプリ</span>' +
+    '<div class="group">' + prefSwitch('motion', '画面の動き') + prefSwitch('haptics', '振動') + '</div>' +
+    '<p class="set-foot">画面の動き：画面の移動やメニュー、仕分けたカードが飛んでいく動きなど。振動：対応するiPhoneで、仕分けや長押しのときに軽く振動します。</p>' +
+
+    '<span class="set-label">データ</span>' +
+    '<div class="group">' +
+      '<button class="row-btn" data-action="export"><span>バックアップを書き出す</span>' + I.share + '</button>' +
+      '<button class="row-btn" data-action="import"><span>バックアップから読み込む</span>' + I.download + '</button>' +
+    '</div>' +
+    '<p class="set-foot">単語帳はこのiPhoneの中だけに保存されています。機種変更の前などに書き出しておくと安心です。</p>' +
+    '<div style="height:calc(40px + env(safe-area-inset-bottom))"></div>' +
+    '</div></div></div>';
+}
+function updateFlipDeps() {
+  ['dep-style', 'dep-dur'].forEach(id => { const n = document.getElementById(id); if (n) n.classList.toggle('off', !P.flipMotion); });
+  document.querySelectorAll('[data-action="flip-style"], #flip-dur').forEach(n => { n.disabled = !P.flipMotion; });
+}
+// 設定を変えたとき、お試しカードを1往復めくって見せる
+let demoTimer = null;
+function demoFlip() {
+  const b = document.getElementById('pv-flip'); if (!b) return;
+  clearTimeout(demoTimer);
+  b.classList.remove('flipped'); void b.offsetWidth;
+  b.classList.add('flipped');
+  demoTimer = setTimeout(() => b.classList.remove('flipped'), P.flipDur * 1000 + 700);
 }
 
 /* --- 単語帳の詳細 --- */
@@ -703,13 +840,15 @@ function renderStudy() {
         '<button class="flip-btn' + (st.flipped ? ' flipped' : '') + '" id="flip" data-action="flip" aria-label="' + esc(st.flipped ? '答え：' + back + '。タップで表に戻す' : front + '。タップして答えを表示') + '">' +
           '<span class="flip-inner">' +
             '<span class="cface front"><span class="band" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><span class="body">' +
-              '<span class="fl">' + fl + '</span><span class="word rounded" style="font-size:' + wordSize(front) + 'rem">' + esc(front) + '</span>' +
+              '<span class="side-row"><span class="side-chip">表</span><span class="fl">' + fl + '</span></span>' +
+              '<span class="word rounded" style="font-size:' + wordSize(front) + 'rem">' + esc(front) + '</span>' +
               '<span class="hint">タップしてめくる ・ 左右にスワイプで仕分け</span></span></span>' +
             '<span class="cface back"><span class="band" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><span class="body">' +
-              '<span class="fl">' + bl + '</span><span class="small">' + esc(front) + '</span>' +
+              '<span class="side-row"><span class="side-chip back-chip">裏</span><span class="fl">' + bl + '</span></span>' +
+              '<span class="small">' + esc(front) + '</span>' +
               '<span class="ans"><span class="word rounded" style="font-size:' + wordSize(back, true) + 'rem">' + esc(back) + '</span>' +
               (card.s ? '<span class="divider"></span><span class="note">' + esc(card.s) + '</span>' : '') +
-              '</span></span></span>' +
+              '</span><span class="hint">タップで表に戻る</span></span></span>' +
           '</span>' +
         '</button>' +
       '</div>' +
@@ -1018,7 +1157,6 @@ function flipCard() {
     const r = currentCard(); const front = st.dir === 0 ? r.card.f : r.card.b; const back = st.dir === 0 ? r.card.b : r.card.f;
     btn.setAttribute('aria-label', st.flipped ? '答え：' + back + '。タップで表に戻す' : front + '。タップして答えを表示');
   }
-  anim(document.getElementById('flip-wrap'), [{ transform: 'scale(1)' }, { transform: 'scale(1.035)', offset: 0.35 }, { transform: 'scale(1)' }], { duration: 560, easing: 'ease-out' });
   autoSpeak();
 }
 function closeStudy() {
@@ -1150,9 +1288,24 @@ function deleteCard(deckId, cardId) {
 }
 
 const actions = {
-  'home-menu': el => openMenu(el, [
-    { label: 'バックアップを書き出す', icon: I.share, run: () => exportData() },
-    { label: 'バックアップから読み込む', icon: I.download, run: () => { const f = document.getElementById('import-file'); f.value = ''; f.click(); } }]),
+  'open-settings': () => { S.screen = 'settings'; S.deckId = null; S.search = ''; render('push'); },
+  'pref-toggle': el => {
+    const k = el.dataset.key; P[k] = !P[k]; savePrefs(); applyPrefs();
+    el.setAttribute('aria-checked', P[k] ? 'true' : 'false');
+    haptic();
+    if (k === 'flipMotion') updateFlipDeps();
+  },
+  'flip-style': el => {
+    if (!P.flipMotion) return;
+    P.flipStyle = el.dataset.style; savePrefs(); applyPrefs(); haptic();
+    const seg = el.closest('.seg');
+    seg.style.setProperty('--i', FLIP_STYLES.findIndex(f => f.key === P.flipStyle));
+    seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === el ? 'true' : 'false'));
+    demoFlip();
+  },
+  'pv-flip': el => { el.classList.toggle('flipped'); },
+  'export': () => exportData(),
+  'import': () => { const f = document.getElementById('import-file'); f.value = ''; f.click(); },
   'plus': el => {
     if (!S.data.decks.length) { openNewDeck(true); return; }
     openMenu(el, [
@@ -1295,6 +1448,11 @@ function updateSearch() {
 document.addEventListener('input', e => {
   const t = e.target;
   if (t.id === 'search') { S.search = t.value; updateSearch(); return; }
+  if (t.id === 'flip-dur') {
+    P.flipDur = Math.round(Number(t.value) * 20) / 20; applyPrefs();
+    const v = document.getElementById('flip-dur-val'); if (v) v.textContent = P.flipDur.toFixed(2) + '秒';
+    return;
+  }
   const k = t.dataset && t.dataset.input; if (!k || !S.sheet) return;
   if (k === 'add-text') { S.sheet.text = t.value; updateAddPreview(); }
   else if (k === 'deck-name') S.sheet.name = t.value;
@@ -1305,6 +1463,7 @@ document.addEventListener('input', e => {
 document.addEventListener('change', e => {
   const t = e.target;
   if (t.id === 'import-file') { if (t.files && t.files[0]) importData(t.files[0]); return; }
+  if (t.id === 'flip-dur') { savePrefs(); demoFlip(); return; }
   if (t.dataset && t.dataset.input === 'add-deck' && S.sheet) {
     if (t.value === '__new') {
       const pending = S.sheet.text;
@@ -1320,7 +1479,7 @@ document.addEventListener('keydown', e => {
     if (menuState) { closeMenu(); return; }
     if (S.sheet) { closeSheet(false); return; }
     if (S.screen === 'study') { closeStudy(); return; }
-    if (S.screen === 'deck') { actions.back(); return; }
+    if (S.screen === 'deck' || S.screen === 'settings') { actions.back(); return; }
   }
   if (S.screen === 'study' && !S.sheet && !menuState && S.study && !S.study.finished) {
     const tag = (e.target.tagName || '').toLowerCase();
@@ -1356,7 +1515,7 @@ document.addEventListener('pointerdown', e => {
   }
   if (menuState) return;
   // 画面の左端から右へなぞって戻る
-  if (S.screen === 'deck' && !S.sheet && e.clientX <= 24) {
+  if ((S.screen === 'deck' || S.screen === 'settings') && !S.sheet && e.clientX <= 24) {
     const cur = currentScreenEl();
     if (cur) { if (e.pointerType === 'mouse') e.preventDefault(); drag = { kind: 'edge', x: e.clientX, y: e.clientY, dx: 0, moved: false, cur: cur, under: null, id: e.pointerId, lastX: e.clientX, lastT: e.timeStamp, v: 0 }; return; }
   }
@@ -1476,6 +1635,8 @@ document.addEventListener('contextmenu', e => {
 });
 
 /* ===== 起動 ===== */
+applyPrefs();
+if (window.matchMedia) { try { window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', () => { applyPrefs(); if (S.screen === 'settings') render(); }); } catch (e) {} }
 render();
 (function intro() {
   if (reduceMotion()) return;
