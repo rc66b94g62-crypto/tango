@@ -133,6 +133,28 @@ svg{display:block; flex-shrink:0;}
 
 .empty{margin:8px 16px; padding:28px 20px; text-align:center; color:var(--label2); background:var(--surface); border-radius:16px;}
 
+/* フォルダ */
+.folder{display:flex; flex-direction:column;}
+.folder-head{display:flex; align-items:center; gap:12px; width:100%; min-height:62px; padding:10px 8px 10px 12px; border:0; border-radius:16px; background:var(--surface); box-shadow:0 1px 2px var(--shadow); color:var(--label); text-align:left;}
+.folder-ic{width:38px; height:38px; flex-shrink:0; border-radius:11px; display:grid; place-items:center; color:var(--deck); background:var(--fill); background:color-mix(in srgb, var(--deck) 15%, transparent);}
+.folder-txt{flex:1; min-width:0; display:flex; flex-direction:column; gap:2px;}
+.fname{font-size:1rem; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.fmeta{font-size:.765rem; color:var(--label2); font-variant-numeric:tabular-nums;}
+.fchev{width:28px; display:grid; place-items:center; color:var(--chev); transition:transform .45s var(--spring);}
+.folder.open .fchev{transform:rotate(90deg);}
+.folder-body{display:grid; grid-template-rows:0fr; transition:grid-template-rows .45s var(--smooth), opacity .3s; opacity:0;}
+.folder.open .folder-body{grid-template-rows:1fr; opacity:1;}
+.folder-clip{min-height:0; overflow:hidden;}
+.folder-items{position:relative; display:flex; flex-direction:column; gap:14px; padding:14px 0 10px 18px;}
+.folder-items::before{content:""; position:absolute; left:6px; top:6px; bottom:12px; width:3px; border-radius:2px; background:var(--deck); opacity:.35;}
+.folder-empty{padding:14px 16px; border-radius:14px; background:var(--surface); color:var(--label2); font-size:.882rem; line-height:1.5;}
+.pick-row{display:flex; align-items:center; gap:12px; width:100%; min-height:52px; padding:0 16px; border:0; border-bottom:.5px solid var(--sep); background:transparent; color:var(--label); font-size:1rem; text-align:left;}
+.pick-row:last-child{border-bottom:0;}
+.pick-row .pname{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.pick-row .pic{width:30px; height:30px; border-radius:8px; display:grid; place-items:center; color:var(--deck); background:var(--fill); background:color-mix(in srgb, var(--deck) 15%, transparent); flex-shrink:0;}
+.pick-row .pcheck{color:var(--accent);}
+.pick-row.add{color:var(--accent);}
+
 /* 検索結果 */
 .group{margin:0 16px; background:var(--surface); border-radius:14px; overflow:hidden;}
 .result-row{display:flex; flex-direction:column; align-items:flex-start; gap:2px; width:100%; padding:10px 16px; min-height:56px; border:0; border-bottom:.5px solid var(--sep); background:none; text-align:left;}
@@ -295,7 +317,7 @@ body.dragging, body.dragging *{-webkit-user-select:none !important; user-select:
 .menu .destructive{color:var(--red);}
 .menu .sepline{height:.5px; background:var(--sep); margin:4px 10px;}
 
-.toast{position:fixed; left:50%; top:calc(env(safe-area-inset-top) + 10px); transform:translateX(-50%); z-index:50; min-height:40px; padding:10px 20px; border-radius:22px; font-size:.882rem; font-weight:600; opacity:0; pointer-events:none; max-width:calc(100vw - 32px); text-align:center; background:#0B0B0C; color:#FFFFFF; box-shadow:0 10px 30px rgba(0,0,0,.25); display:flex; align-items:center; justify-content:center; gap:8px;}
+.toast{position:fixed; left:50%; width:max-content; top:calc(env(safe-area-inset-top) + 10px); transform:translateX(-50%); z-index:50; min-height:40px; padding:10px 20px; border-radius:22px; font-size:.882rem; font-weight:600; opacity:0; pointer-events:none; max-width:calc(100vw - 32px); text-align:center; background:#0B0B0C; color:#FFFFFF; box-shadow:0 10px 30px rgba(0,0,0,.25); display:flex; align-items:center; justify-content:center; gap:8px;}
 .toast .tx{display:block;}
 
 /* 押したときの沈み込み */
@@ -400,6 +422,10 @@ const KINDS = {
 /* ===== アイコン ===== */
 const I = {
   gear: '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>',
+  folder: '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M2.8 7.3A2.5 2.5 0 0 1 5.3 4.8h3.9c.6 0 1.1.2 1.5.6l1.3 1.3c.4.4.9.6 1.5.6h5.2a2.5 2.5 0 0 1 2.5 2.5v7.4a2.5 2.5 0 0 1-2.5 2.5H5.3a2.5 2.5 0 0 1-2.5-2.5z"/></svg>',
+  folderS: '<svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M2.8 7.3A2.5 2.5 0 0 1 5.3 4.8h3.9c.6 0 1.1.2 1.5.6l1.3 1.3c.4.4.9.6 1.5.6h5.2a2.5 2.5 0 0 1 2.5 2.5v7.4a2.5 2.5 0 0 1-2.5 2.5H5.3a2.5 2.5 0 0 1-2.5-2.5z"/></svg>',
+  folderAdd: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h3.6l2 2h7.4A2.5 2.5 0 0 1 21 9.5v7A2.5 2.5 0 0 1 18.5 19h-13A2.5 2.5 0 0 1 3 16.5z"/><path d="M12 10.5v5M9.5 13h5"/></svg>',
+  move: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h3.6l2 2h7.4A2.5 2.5 0 0 1 21 9.5v7A2.5 2.5 0 0 1 18.5 19h-13A2.5 2.5 0 0 1 3 16.5z"/><path d="M9 13h6M13 10.5l2.5 2.5-2.5 2.5"/></svg>',
   more: '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>',
   back: '<svg width="11" height="19" viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2L2 10l8 8"/></svg>',
   close: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
@@ -526,7 +552,17 @@ function sampleDecks() {
   return [en, kj];
 }
 function normalize(raw) {
-  const out = { version: 1, decks: [] };
+  const out = { version: 1, decks: [], folders: [] };
+  (raw && Array.isArray(raw.folders) ? raw.folders : []).forEach(f => {
+    if (!f || typeof f !== 'object') return;
+    out.folders.push({
+      id: f.id ? String(f.id) : uid(),
+      name: String(f.name || 'フォルダ').slice(0, 40),
+      color: COLORS.some(c => c.key === f.color) ? f.color : 'indigo',
+      open: f.open !== false
+    });
+  });
+  const folderIds = new Set(out.folders.map(f => f.id));
   const decks = raw && Array.isArray(raw.decks) ? raw.decks : [];
   decks.forEach(d => {
     if (!d || typeof d !== 'object') return;
@@ -535,6 +571,7 @@ function normalize(raw) {
     const deck = makeDeck(String(d.name || '名前のない単語帳').slice(0, 60), kind, color);
     if (d.id) deck.id = String(d.id);
     if (d.created) deck.created = Number(d.created) || Date.now();
+    deck.folderId = d.folderId && folderIds.has(String(d.folderId)) ? String(d.folderId) : null;
     const st = d.settings || {};
     deck.settings = { dir: st.dir === 1 ? 1 : 0, shuffle: st.shuffle !== false, speak: st.speak !== false };
     (Array.isArray(d.cards) ? d.cards : []).forEach(c => {
@@ -553,13 +590,15 @@ function load() {
     const raw = localStorage.getItem(STORE_KEY);
     if (raw) return normalize(JSON.parse(raw));
   } catch (e) { /* 読み込み失敗時は初期データ */ }
-  return { version: 1, decks: sampleDecks(), fresh: true };
+  return { version: 1, decks: sampleDecks(), folders: [], fresh: true };
 }
 function save() {
-  try { localStorage.setItem(STORE_KEY, JSON.stringify({ version: 1, decks: S.data.decks })); }
+  try { localStorage.setItem(STORE_KEY, JSON.stringify({ version: 1, decks: S.data.decks, folders: S.data.folders })); }
   catch (e) { toast('保存できませんでした。iPhoneの空き容量を確認してください'); }
 }
 function getDeck(id) { return S.data.decks.find(d => d.id === id); }
+function getFolder(id) { return id ? S.data.folders.find(f => f.id === id) : null; }
+function folderDecks(id) { return S.data.decks.filter(d => d.folderId === id); }
 function resolve(it) { const deck = getDeck(it.d); const card = deck && deck.cards.find(c => c.id === it.c); return { deck: deck, card: card }; }
 function knownCount(deck) { return deck.cards.filter(c => c.known).length; }
 function parseLines(text) {
@@ -685,8 +724,26 @@ function renderHomeBody() {
         '<span class="rf">' + esc(h.c.f) + '</span><span class="rb">' + esc(h.c.b) + ' ・ ' + esc(h.d.name) + '</span></button>').join('') +
       '</div>';
   }
-  if (!S.data.decks.length) return '';
-  return '<h2 class="section-title">すべての単語帳</h2><div class="deck-list">' + S.data.decks.map(d => {
+  if (!S.data.decks.length && !S.data.folders.length) return '';
+  const loose = S.data.decks.filter(d => !getFolder(d.folderId));
+  return '<h2 class="section-title">すべての単語帳</h2><div class="deck-list">' +
+    S.data.folders.map(folderHtml).join('') + loose.map(deckRowHtml).join('') + '</div>';
+}
+function folderHtml(f) {
+  const ds = folderDecks(f.id);
+  const known = ds.reduce((n, d) => n + knownCount(d), 0), total = ds.reduce((n, d) => n + d.cards.length, 0);
+  const inner = ds.length ? ds.map(deckRowHtml).join('')
+    : '<div class="folder-empty">まだ単語帳がありません。単語帳を長押しして「フォルダに移動」を選ぶと、ここに入れられます。</div>';
+  return '<section class="folder' + (f.open ? ' open' : '') + '" data-folder="' + esc(f.id) + '" style="--deck: var(--c-' + esc(f.color) + ')">' +
+    '<button class="folder-head" data-action="toggle-folder" data-id="' + esc(f.id) + '" aria-expanded="' + (f.open ? 'true' : 'false') + '" aria-label="フォルダ ' + esc(f.name) + '、' + ds.length + '冊">' +
+      '<span class="folder-ic">' + I.folder + '</span>' +
+      '<span class="folder-txt"><span class="fname">' + esc(f.name) + '</span><span class="fmeta">' + ds.length + '冊 ・ ' + known + ' / ' + total + ' 覚えた</span></span>' +
+      '<span class="fchev" aria-hidden="true">' + I.chev + '</span>' +
+    '</button>' +
+    '<div class="folder-body"' + (f.open ? '' : ' inert') + '><div class="folder-clip"><div class="folder-items">' + inner + '</div></div></div>' +
+  '</section>';
+}
+function deckRowHtml(d) {
     const k = knownCount(d), t = d.cards.length, pct = t ? Math.round(k / t * 100) : 0;
     return '<button class="deck-row" data-action="open-deck" data-id="' + esc(d.id) + '" style="' + deckStyle(d) + '" aria-label="' + esc(d.name) + '、' + KINDS[d.kind].name + '、' + t + '枚中' + k + '枚覚えた">' +
       '<span class="face"><span class="band" aria-hidden="true"></span>' +
@@ -694,7 +751,6 @@ function renderHomeBody() {
       '<span class="info"><span class="top"><span class="name">' + esc(d.name) + '</span><span class="kind">' + KINDS[d.kind].name + '</span></span>' +
       '<span class="progress"><span class="bar"><span style="width:' + pct + '%"></span></span><span class="num">' + k + ' / ' + t + '</span></span></span>' +
       '<span class="chev-cell" aria-hidden="true">' + I.chev + '</span></span></button>';
-  }).join('') + '</div>';
 }
 
 /* --- 設定 --- */
@@ -781,7 +837,7 @@ function renderDeck(deck) {
     '<div class="topbar"><button class="glass glass-btn" data-action="back" aria-label="単語帳一覧に戻る">' + I.back + '</button>' +
     '<button class="glass glass-btn" data-action="deck-menu" aria-label="その他の操作" aria-haspopup="menu">' + I.more + '</button></div>' +
     '<div class="deck-hero stack" style="' + deckStyle(deck) + '"><div class="card"><span class="band" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span>' +
-    '<div class="body"><span class="eyebrow">' + K.name + ' ・ ' + t + '枚</span><h1>' + esc(deck.name) + '</h1></div></div></div>' +
+    '<div class="body"><span class="eyebrow">' + (getFolder(deck.folderId) ? esc(getFolder(deck.folderId).name) + ' ・ ' : '') + K.name + ' ・ ' + t + '枚</span><h1>' + esc(deck.name) + '</h1></div></div></div>' +
     '<div class="stats"><div class="stat known"><span class="lab">' + I.checkS + '覚えた</span><span class="val rounded">' + k + '</span></div>' +
     '<div class="stat later"><span class="lab">' + I.againS + 'まだ</span><span class="val rounded">' + later + '</span></div></div>' +
     '<div class="actions">' +
@@ -827,7 +883,7 @@ function renderStudy() {
   const fl = K.labels[st.dir === 0 ? 0 : 1], bl = K.labels[st.dir === 0 ? 1 : 0];
   const pos = Math.min(st.done + 1, st.total);
   const pct = Math.round(st.done / st.total * 100);
-  const title = st.deckId ? deck.name : '今日の復習';
+  const title = st.deckId ? deck.name : getFolder(st.folderId) ? getFolder(st.folderId).name : '今日の復習';
   return '<div class="screen study"><div class="inner">' +
     '<div class="topbar three">' + closeBtn +
       '<div class="counter"><b>' + pos + ' / ' + st.total + '</b><span class="bar" role="progressbar" aria-label="進み具合" aria-valuemin="0" aria-valuemax="' + st.total + '" aria-valuenow="' + st.done + '"><span style="width:' + pct + '%"></span></span></div>' +
@@ -888,7 +944,7 @@ function sheetFrame(title, body, saveLabel, saveDisabled) {
     '<div class="sheet-head" data-drag="sheet">' +
       '<button class="glass glass-btn" data-action="sheet-close" aria-label="閉じる">' + I.close + '</button>' +
       '<h2 id="sheet-title">' + title + '</h2>' +
-      '<button class="glass-btn primary" id="sheet-save" data-action="sheet-save" aria-label="' + saveLabel + '"' + (saveDisabled ? ' disabled' : '') + '>' + I.check + '</button>' +
+      (saveLabel === null ? '<span></span>' : '<button class="glass-btn primary" id="sheet-save" data-action="sheet-save" aria-label="' + saveLabel + '"' + (saveDisabled ? ' disabled' : '') + '>' + I.check + '</button>') +
     '</div>' +
     '<div class="sheet-scroll">' + body + '</div></div>';
 }
@@ -916,7 +972,11 @@ function renderSheet() {
     const editDeck = isEdit ? getDeck(sh.id) : null;
     const lockKind = isEdit && editDeck && editDeck.cards.length > 0;
     const body =
-      '<div class="group"><label class="cell"><span class="sr">単語帳の名前</span><input class="field left" data-input="deck-name" maxlength="60" placeholder="単語帳の名前（例：ターゲット1900 Section 1）" value="' + esc(sh.name) + '"></label></div>' +
+      '<div class="group"><label class="cell"><span class="sr">単語帳の名前</span><input class="field left" data-input="deck-name" maxlength="60" placeholder="単語帳の名前（例：ターゲット1900 Section 1）" value="' + esc(sh.name) + '"></label>' +
+        (S.data.folders.length ? '<label class="cell tight"><span class="cell-label">フォルダ</span><select class="select" data-input="deck-folder">' +
+          '<option value=""' + (sh.folderId ? '' : ' selected') + '>入れない</option>' +
+          S.data.folders.map(f => '<option value="' + esc(f.id) + '"' + (f.id === sh.folderId ? ' selected' : '') + '>' + esc(f.name) + '</option>').join('') +
+        '</select></label>' : '') + '</div>' +
       '<p class="group-label">種類' + (lockKind ? '（カードがあるため変更できません）' : '') + '</p>' +
       '<div class="group pad"><div class="seg" role="group" aria-label="種類" style="--i:' + (sh.kind === 'kanji' ? 1 : 0) + '"><span class="seg-pill" aria-hidden="true"></span>' +
         ['en', 'kanji'].map(k => '<button data-action="deck-kind" data-kind="' + k + '" aria-pressed="' + (sh.kind === k) + '"' + (lockKind ? ' disabled' : '') + '>' + KINDS[k].name + '</button>').join('') +
@@ -926,6 +986,30 @@ function renderSheet() {
         COLORS.map(c => '<button class="swatch" role="radio" aria-checked="' + (sh.color === c.key) + '" aria-label="' + c.name + '" data-action="deck-color" data-color="' + c.key + '" style="--deck: var(--c-' + c.key + ')"></button>').join('') +
       '</div></div>';
     return sheetFrame(isEdit ? '単語帳を編集' : '新しい単語帳', body, isEdit ? '保存' : '作成', false);
+  }
+  if (sh.type === 'folder') {
+    const body =
+      '<div class="group"><label class="cell"><span class="sr">フォルダの名前</span><input class="field left" data-input="folder-name" maxlength="40" placeholder="フォルダの名前（例：高校英語、漢検）" value="' + esc(sh.name) + '"></label></div>' +
+      '<p class="group-label">色</p>' +
+      '<div class="group pad"><div class="swatches" role="radiogroup" aria-label="色">' +
+        COLORS.map(c => '<button class="swatch" role="radio" aria-checked="' + (sh.color === c.key) + '" aria-label="' + c.name + '" data-action="deck-color" data-color="' + c.key + '" style="--deck: var(--c-' + c.key + ')"></button>').join('') +
+      '</div></div>' +
+      (sh.moveDeckId ? '<p class="group-label">作ったあと、「' + esc((getDeck(sh.moveDeckId) || {}).name || '') + '」をこのフォルダに入れます</p>' : '');
+    return sheetFrame(sh.id ? 'フォルダを編集' : '新しいフォルダ', body, sh.id ? '保存' : '作成', false);
+  }
+  if (sh.type === 'move') {
+    const deck = getDeck(sh.deckId); if (!deck) return '';
+    const row = (id, name, color, icon) => '<button class="pick-row" data-action="move-to" data-folder="' + esc(id) + '"' + (color ? ' style="--deck: var(--c-' + esc(color) + ')"' : '') + '>' +
+      '<span class="pic">' + icon + '</span><span class="pname">' + esc(name) + '</span>' +
+      ((deck.folderId || '') === id ? '<span class="pcheck" aria-label="現在の場所">' + I.check + '</span>' : '') + '</button>';
+    const body =
+      '<p class="group-label" style="margin-top:6px">「' + esc(deck.name) + '」の移動先</p>' +
+      '<div class="group">' +
+        S.data.folders.map(f => row(f.id, f.name, f.color, I.folderS)).join('') +
+        row('', 'フォルダに入れない', null, I.stack) +
+      '</div>' +
+      '<div class="group" style="margin-top:20px"><button class="pick-row add" data-action="move-new"><span class="pic" style="--deck: var(--accent)">' + I.folderAdd + '</span><span class="pname">新しいフォルダを作って入れる</span></button></div>';
+    return sheetFrame('フォルダに移動', body, null, false);
   }
   if (sh.type === 'card') {
     const deck = getDeck(sh.deckId);
@@ -986,6 +1070,7 @@ function openContext(row, items) {
   clone.removeAttribute('data-action'); clone.setAttribute('aria-hidden', 'true'); clone.tabIndex = -1;
   clone.querySelectorAll('[data-action]').forEach(n => n.removeAttribute('data-action'));
   Object.assign(clone.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
+  const deckVar = getComputedStyle(row).getPropertyValue('--deck'); if (deckVar) clone.style.setProperty('--deck', deckVar);
   const m = document.createElement('div'); m.className = 'menu'; m.setAttribute('role', 'menu');
   m.innerHTML = menuItemsHtml(items);
   layer.append(dim, clone, m);
@@ -1022,6 +1107,22 @@ function closeMenu(instant) {
 }
 function openContextFor(row) {
   if (menuState && menuState.row === row) return;
+  if (row.classList.contains('folder-head')) {
+    const f = getFolder(row.dataset.id); if (!f) return;
+    const ds = folderDecks(f.id);
+    const later = ds.reduce((n, d) => n + d.cards.filter(c => !c.known).length, 0);
+    const all = ds.reduce((n, d) => n + d.cards.length, 0);
+    openContext(row, [
+      { label: 'まだだけ学習（' + later + '枚）', icon: I.again, disabled: !later, run: () => startStudy(null, 'later', f.id) },
+      { label: 'すべて学習', icon: I.play, disabled: !all, run: () => startStudy(null, 'all', f.id) },
+      '-',
+      { label: 'この中に単語帳を作る', icon: I.stack, run: () => openNewDeck(true, f.id) },
+      { label: '名前と色を変更', icon: I.pencil, run: () => openFolderSheet(f.id) },
+      '-',
+      { label: 'フォルダを削除', icon: I.trash, destructive: true, run: () => deleteFolder(f.id) }
+    ]);
+    return;
+  }
   if (row.classList.contains('deck-row')) {
     const d = getDeck(row.dataset.id); if (!d) return;
     const later = d.cards.length - knownCount(d);
@@ -1030,6 +1131,7 @@ function openContextFor(row) {
       { label: 'まだだけ学習（' + later + '枚）', icon: I.again, disabled: !later, run: () => startStudy(d.id, 'later') },
       '-',
       { label: 'カードを追加', icon: I.cards, run: () => openAdd(d.id) },
+      { label: 'フォルダに移動', icon: I.move, run: () => openMove(d.id) },
       { label: '単語帳を編集', icon: I.pencil, run: () => editDeck(d.id) },
       { label: '記録をリセット', icon: I.again, run: () => resetDeck(d.id) },
       '-',
@@ -1069,8 +1171,8 @@ function updateAddPreview() {
 }
 
 /* ===== 学習の進行 ===== */
-function startStudy(deckId, mode) {
-  const decks = deckId ? [getDeck(deckId)] : S.data.decks;
+function startStudy(deckId, mode, folderId) {
+  const decks = deckId ? [getDeck(deckId)] : folderId ? folderDecks(folderId) : S.data.decks;
   const items = [];
   decks.forEach(d => d.cards.forEach(c => { if (mode === 'all' || !c.known) items.push({ d: d.id, c: c.id }); }));
   if (!items.length) { toast(mode === 'later' ? '「まだ」のカードはありません' : 'カードがありません'); return; }
@@ -1078,7 +1180,7 @@ function startStudy(deckId, mode) {
   if (shuffle) shuffleArr(items);
   const from = S.screen;
   const returnTo = from === 'study' && S.study ? S.study.returnTo : (from === 'deck' ? 'deck' : 'home');
-  S.study = { deckId: deckId, mode: mode, queue: items, total: items.length, done: 0, knownCount: 0, laterCount: 0, flipped: false, dir: deckId ? getDeck(deckId).settings.dir : 0, finished: false, returnTo: returnTo, busy: false };
+  S.study = { deckId: deckId, folderId: folderId || null, mode: mode, queue: items, total: items.length, done: 0, knownCount: 0, laterCount: 0, flipped: false, dir: deckId ? getDeck(deckId).settings.dir : 0, finished: false, returnTo: returnTo, busy: false };
   S.screen = 'study';
   render(from === 'study' ? null : 'present');
   if (from === 'study') cardEnter();
@@ -1186,7 +1288,7 @@ function toast(msg) {
 
 /* ===== バックアップ ===== */
 async function exportData() {
-  const json = JSON.stringify({ app: 'tango', version: 1, exportedAt: new Date().toISOString(), decks: S.data.decks });
+  const json = JSON.stringify({ app: 'tango', version: 1, exportedAt: new Date().toISOString(), decks: S.data.decks, folders: S.data.folders });
   const d = new Date();
   const name = 'tango-backup-' + d.getFullYear() + pad2(d.getMonth() + 1) + pad2(d.getDate()) + '.json';
   let file;
@@ -1229,8 +1331,8 @@ function openAdd(deckId) {
   if (!id) { openNewDeck(true); return; }
   S.sheet = { type: 'add', key: 'add', deckId: id, text: '' }; renderOverlay();
 }
-function openNewDeck(thenAdd) {
-  S.sheet = { type: 'deck', key: 'new', id: null, name: '', kind: 'en', color: nextColor(), thenAdd: thenAdd !== false };
+function openNewDeck(thenAdd, folderId) {
+  S.sheet = { type: 'deck', key: 'new', id: null, name: '', kind: 'en', color: nextColor(), thenAdd: thenAdd !== false, folderId: folderId || null };
   renderOverlay();
   setTimeout(() => { const f = document.querySelector('[data-input="deck-name"]'); if (f) f.focus(); }, 350);
 }
@@ -1253,9 +1355,41 @@ function closeSheet(force) {
   } else renderOverlay();
   return true;
 }
+function nextFolderColor() {
+  const used = S.data.folders.map(f => f.color);
+  const free = COLORS.find(c => used.indexOf(c.key) === -1);
+  return (free || COLORS[S.data.folders.length % COLORS.length]).key;
+}
+function openFolderOf(d) { const f = getFolder(d.folderId); if (f) f.open = true; }
+function openFolderSheet(id) {
+  const f = getFolder(id);
+  S.sheet = f ? { type: 'folder', key: 'folder-' + f.id, id: f.id, name: f.name, color: f.color }
+              : { type: 'folder', key: 'folder-new', id: null, name: '', color: nextFolderColor() };
+  renderOverlay();
+  if (!f) setTimeout(() => { const n = document.querySelector('[data-input="folder-name"]'); if (n) n.focus(); }, 350);
+}
+function openMove(deckId) {
+  if (!getDeck(deckId)) return;
+  S.sheet = { type: 'move', key: 'move-' + deckId, deckId: deckId }; renderOverlay();
+}
+function deleteFolder(id) {
+  const f = getFolder(id); if (!f) return;
+  const n = folderDecks(f.id).length;
+  if (!confirm('フォルダ「' + f.name + '」を削除します。' + (n ? '中の単語帳' + n + '冊は削除されず、フォルダの外に出ます。' : ''))) return;
+  S.data.decks.forEach(d => { if (d.folderId === f.id) d.folderId = null; });
+  S.data.folders = S.data.folders.filter(x => x.id !== f.id);
+  save(); render(); toast('フォルダを削除しました');
+}
+// 移動先・作成したフォルダを少し光らせて知らせる
+function flashFolder(id) {
+  const sec = document.querySelector('.folder[data-folder="' + CSS.escape(id) + '"]'); if (!sec) return;
+  const head = sec.querySelector('.folder-head');
+  try { sec.scrollIntoView({ block: 'nearest', behavior: reduceMotion() ? 'auto' : 'smooth' }); } catch (e) {}
+  anim(head, [{ transform: 'scale(1)' }, { transform: 'scale(1.04)', offset: .35 }, { transform: 'scale(1)' }], { duration: 560, easing: 'ease-out' });
+}
 function editDeck(id) {
   const d = getDeck(id); if (!d) return;
-  S.sheet = { type: 'deck', key: 'edit', id: d.id, name: d.name, kind: d.kind, color: d.color }; renderOverlay();
+  S.sheet = { type: 'deck', key: 'edit', id: d.id, name: d.name, kind: d.kind, color: d.color, folderId: d.folderId || null }; renderOverlay();
 }
 function resetDeck(id) {
   const d = getDeck(id); if (!d) return;
@@ -1288,6 +1422,31 @@ function deleteCard(deckId, cardId) {
 }
 
 const actions = {
+  'toggle-folder': el => {
+    const f = getFolder(el.dataset.id); if (!f) return;
+    f.open = !f.open; save();
+    const sec = el.closest('.folder');
+    sec.classList.toggle('open', f.open);
+    el.setAttribute('aria-expanded', f.open ? 'true' : 'false');
+    const body = sec.querySelector('.folder-body');
+    if (f.open) body.removeAttribute('inert'); else body.setAttribute('inert', '');
+    if (f.open) sec.querySelectorAll('.folder-items > *').forEach((n, i) => anim(n, [{ opacity: 0, transform: 'translateY(-10px)' }, { opacity: 1, transform: 'none' }], { duration: 420, delay: 40 + i * 40, easing: SPRING.soft }));
+  },
+  'move-to': el => {
+    const d = getDeck(S.sheet && S.sheet.deckId); if (!d) return;
+    const id = el.dataset.folder || null;
+    d.folderId = getFolder(id) ? id : null; openFolderOf(d); save(); haptic();
+    closeSheet(true); render();
+    const f = getFolder(d.folderId);
+    toast(f ? '「' + f.name + '」に移動しました' : 'フォルダの外に出しました');
+    if (f) flashFolder(f.id);
+  },
+  'move-new': () => {
+    const id = S.sheet && S.sheet.deckId;
+    S.sheet = { type: 'folder', key: 'folder-new', id: null, name: '', color: nextFolderColor(), moveDeckId: id };
+    renderOverlay();
+    setTimeout(() => { const f = document.querySelector('[data-input="folder-name"]'); if (f) f.focus(); }, 350);
+  },
   'open-settings': () => { S.screen = 'settings'; S.deckId = null; S.search = ''; render('push'); },
   'pref-toggle': el => {
     const k = el.dataset.key; P[k] = !P[k]; savePrefs(); applyPrefs();
@@ -1310,7 +1469,8 @@ const actions = {
     if (!S.data.decks.length) { openNewDeck(true); return; }
     openMenu(el, [
       { label: 'カードを追加', icon: I.cards, run: () => openAdd(null) },
-      { label: '新しい単語帳', icon: I.stack, run: () => openNewDeck(true) }]);
+      { label: '新しい単語帳', icon: I.stack, run: () => openNewDeck(true) },
+      { label: '新しいフォルダ', icon: I.folderAdd, run: () => openFolderSheet(null) }]);
   },
   'deck-menu': el => {
     const id = S.deckId;
@@ -1398,14 +1558,36 @@ const actions = {
       }
       if (sh.id) {
         const d = getDeck(sh.id); d.name = name; d.color = sh.color; if (!d.cards.length) d.kind = sh.kind;
+        d.folderId = getFolder(sh.folderId) ? sh.folderId : null; openFolderOf(d);
         save(); closeSheet(true); render();
       } else {
-        const d = makeDeck(name, sh.kind, sh.color); S.data.decks.push(d); save(); haptic();
+        const d = makeDeck(name, sh.kind, sh.color); d.folderId = getFolder(sh.folderId) ? sh.folderId : null; openFolderOf(d);
+        S.data.decks.push(d); save(); haptic();
         S.deckId = d.id; S.screen = 'deck'; S.search = '';
         if (sh.thenAdd) S.sheet = { type: 'add', key: 'add-' + d.id, deckId: d.id, text: sh.pendingText || '' };
         else closeSheet(true);
         render(from === 'deck' ? null : 'push');
         toast('「' + name + '」を作りました');
+      }
+    } else if (sh.type === 'folder') {
+      const name = sh.name.trim();
+      if (!name) {
+        toast('フォルダの名前を入力してください');
+        const f = document.querySelector('[data-input="folder-name"]');
+        if (f) { f.focus(); anim(f.closest('.group'), [{ transform: 'translateX(0)' }, { transform: 'translateX(-10px)' }, { transform: 'translateX(8px)' }, { transform: 'translateX(-5px)' }, { transform: 'translateX(0)' }], { duration: 380, easing: 'ease-out' }); }
+        return;
+      }
+      if (sh.id) {
+        const f = getFolder(sh.id); if (f) { f.name = name; f.color = sh.color; }
+        save(); closeSheet(true); render();
+      } else {
+        const f = { id: uid(), name: name, color: sh.color, open: true };
+        S.data.folders.push(f);
+        const md = getDeck(sh.moveDeckId); if (md) md.folderId = f.id;
+        save(); haptic(); closeSheet(true);
+        if (S.screen === 'deck' || S.screen === 'settings') { S.screen = 'home'; S.deckId = null; render('pop'); } else render();
+        toast(md ? '「' + name + '」を作って移動しました' : 'フォルダ「' + name + '」を作りました');
+        flashFolder(f.id);
       }
     } else if (sh.type === 'card') {
       if (!sh.f.trim() || !sh.b.trim()) { toast('表と裏は入力してください'); return; }
@@ -1426,7 +1608,7 @@ const actions = {
     autoSpeak();
   },
   'study-close': () => closeStudy(),
-  'again': () => startStudy(S.study.deckId, 'later')
+  'again': () => startStudy(S.study.deckId, 'later', S.study.folderId)
 };
 
 document.addEventListener('click', e => {
@@ -1456,6 +1638,7 @@ document.addEventListener('input', e => {
   const k = t.dataset && t.dataset.input; if (!k || !S.sheet) return;
   if (k === 'add-text') { S.sheet.text = t.value; updateAddPreview(); }
   else if (k === 'deck-name') S.sheet.name = t.value;
+  else if (k === 'folder-name') S.sheet.name = t.value;
   else if (k === 'card-f') S.sheet.f = t.value;
   else if (k === 'card-b') S.sheet.b = t.value;
   else if (k === 'card-s') S.sheet.s = t.value;
@@ -1464,10 +1647,11 @@ document.addEventListener('change', e => {
   const t = e.target;
   if (t.id === 'import-file') { if (t.files && t.files[0]) importData(t.files[0]); return; }
   if (t.id === 'flip-dur') { savePrefs(); demoFlip(); return; }
+  if (t.dataset && t.dataset.input === 'deck-folder' && S.sheet) { S.sheet.folderId = t.value || null; return; }
   if (t.dataset && t.dataset.input === 'add-deck' && S.sheet) {
     if (t.value === '__new') {
       const pending = S.sheet.text;
-      S.sheet = { type: 'deck', key: 'new', id: null, name: '', kind: 'en', color: nextColor(), thenAdd: true, pendingText: pending };
+      S.sheet = { type: 'deck', key: 'new', id: null, name: '', kind: 'en', color: nextColor(), thenAdd: true, pendingText: pending, folderId: null };
       renderOverlay();
       return;
     }
@@ -1506,7 +1690,7 @@ document.addEventListener('pointerdown', e => {
   const pb = e.target.closest('button, .deck-row');
   if (pb && !pb.disabled) { unpress(); pressed = pb; pb.classList.add('pressing'); }
   // 長押しメニュー
-  const row = e.target.closest('.deck-row, .card-row');
+  const row = e.target.closest('.deck-row, .card-row, .folder-head');
   cancelLongPress();
   if (row && !e.target.closest('.badge') && !menuState && !S.sheet && !row.closest('#menu-layer')) {
     lp = { x: e.clientX, y: e.clientY, timer: setTimeout(() => {
@@ -1627,7 +1811,7 @@ function endDrag(e) {
 document.addEventListener('pointerup', endDrag);
 document.addEventListener('pointercancel', endDrag);
 document.addEventListener('contextmenu', e => {
-  const row = e.target.closest('.deck-row, .card-row');
+  const row = e.target.closest('.deck-row, .card-row, .folder-head');
   if (!row || row.closest('#menu-layer')) return;
   e.preventDefault(); cancelLongPress(); unpress();
   suppressClickUntil = Date.now() + 500;
@@ -1640,7 +1824,7 @@ if (window.matchMedia) { try { window.matchMedia('(prefers-reduced-motion: reduc
 render();
 (function intro() {
   if (reduceMotion()) return;
-  document.querySelectorAll('#app .lt, #app .hero, #app .section-title, #app .deck-row, #app .bottombar > *')
+  document.querySelectorAll('#app .lt, #app .hero, #app .section-title, #app .deck-list > *, #app .bottombar > *')
     .forEach((el, i) => anim(el, [{ opacity: 0, transform: 'translateY(18px)' }, { opacity: 1, transform: 'translateY(0)' }], { duration: 600, delay: 40 + i * 45, easing: SPRING.soft }));
 })();
 if (navigator.storage && navigator.storage.persist) { navigator.storage.persist().catch(() => {}); }
