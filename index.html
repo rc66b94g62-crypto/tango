@@ -1752,8 +1752,7 @@ document.addEventListener('pointerdown', e => {
   }
   const w = e.target.closest('#flip-wrap');
   if (w && S.study && !S.study.finished && !S.study.busy) {
-    drag = { kind: 'card', x: e.clientX, y: e.clientY, dx: 0, moved: false, w: w, id: e.pointerId, samples: [{ x: e.clientX, t: e.timeStamp }] };
-    try { w.setPointerCapture(e.pointerId); } catch (er) {}
+    drag = { kind: 'card', x: e.clientX, y: e.clientY, dx: 0, moved: false, w: w, id: e.pointerId, samples: [{ x: e.clientX, t: e.timeStamp }], type: e.pointerType, t0: e.timeStamp };
     return;
   }
   const sz = e.target.closest('[data-drag="sheet"]');
@@ -1772,6 +1771,7 @@ document.addEventListener('pointermove', e => {
     // 少し斜めでも横の操作として受け取る（縦に大きく動かしたときだけ無視）
     if (!drag.moved && Math.abs(dx) > SWIPE.lockMin && Math.abs(dx) > Math.abs(dy) * 0.7) {
       drag.moved = true; unpress(); cancelLongPress(); setDragging(true);
+      try { drag.w.setPointerCapture(drag.id); } catch (er) {}
       try { drag.w.getAnimations().forEach(a => a.cancel()); } catch (er) {}
       drag.w.style.transition = 'none';
     }
@@ -1817,7 +1817,13 @@ function endDrag(e) {
   const d = drag; drag = null;
   setDragging(false);
   if (d.kind === 'card') {
-    if (!d.moved) return;
+    if (!d.moved) {
+      if (d.type !== 'mouse' && e && e.type === 'pointerup' && e.timeStamp - d.t0 < 1200) {
+        suppressClickUntil = Date.now() + 450; // 念のため、あとから来るクリックで二重にめくらない
+        unpress(); flipCard();
+      }
+      return;
+    }
     suppressClickUntil = Date.now() + 350;
     const resetTags = () => { ['tag-known', 'tag-later'].forEach(id => { const t = document.getElementById(id); if (t) { t.style.opacity = 0; t.style.transform = ''; } }); };
     const vel = swipeVelocity(d.samples, (e && e.timeStamp) || performance.now());
@@ -1862,6 +1868,9 @@ function endDrag(e) {
   }
 }
 document.addEventListener('pointerup', endDrag);
+['touchstart', 'touchmove'].forEach(type => document.addEventListener(type, e => {
+  if (S.screen === 'study' && e.target.closest && e.target.closest('#flip-wrap')) e.preventDefault();
+}, { passive: false }));
 document.addEventListener('pointercancel', endDrag);
 document.addEventListener('contextmenu', e => {
   const row = e.target.closest('.deck-row, .card-row, .folder-head');
