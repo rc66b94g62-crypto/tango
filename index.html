@@ -133,6 +133,18 @@ svg{display:block; flex-shrink:0;}
 
 .empty{margin:8px 16px; padding:28px 20px; text-align:center; color:var(--label2); background:var(--surface); border-radius:16px;}
 
+/* 例文の問われる部分 */
+.tgt{font-weight:800; color:var(--deck, var(--accent)); text-decoration:underline; text-decoration-thickness:2px; text-underline-offset:.2em;}
+.word.sent{font-weight:500; line-height:1.5;}
+.word .wt{display:block; max-width:100%;}
+.cface .small .tgt{font-weight:700;}
+.copy-row{display:flex; align-items:center; gap:12px; width:100%; min-height:62px; padding:10px 16px; border:0; border-bottom:.5px solid var(--sep); background:transparent; color:var(--label); text-align:left;}
+.copy-row:last-child{border-bottom:0;}
+.copy-row .ct{flex:1; min-width:0; display:flex; flex-direction:column; gap:3px;}
+.copy-row .ctt{font-weight:600;}
+.copy-row .cex{font-size:.765rem; color:var(--label2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.copy-row .cic{color:var(--accent); display:flex; align-items:center; gap:4px; font-size:.765rem; font-weight:600;}
+
 /* フォルダ */
 .folder{display:flex; flex-direction:column;}
 .folder-head{display:flex; align-items:center; gap:12px; width:100%; min-height:62px; padding:10px 8px 10px 12px; border:0; border-radius:16px; background:var(--surface); box-shadow:0 1px 2px var(--shadow); color:var(--label); text-align:left;}
@@ -413,8 +425,9 @@ const KINDS = {
   kanji: {
     name: '漢字', labels: ['漢字', '読み', '意味'], seg: ['漢字 → 読み', '読み → 漢字'],
     lang: 'ja-JP', speakIdx: 1, speakLabel: '読みを読み上げ', speakBtn: '読み',
-    hint: '1行に1枚 ・ 漢字,読み,意味（意味は省略可）',
+    hint: '1行に1枚 ・ 漢字,読み,意味（意味は省略可）・例文は問われる語を［ ］で囲む',
     placeholder: '承る,うけたまわる,謹んで受ける・聞く\n潔い,いさぎよい',
+    promptSent: 'この画像は漢字の読みの問題集です。見出し語（例：①喘［ぐ］あえ）と、その例文（例：①喘ぎながら山を登る。）が載っています。テストでは例文の形のまま読みを問われるので、例文ごとに1行ずつ、次の形式で書き出してください。\n\n例文（読みを問われる語を［ ］で囲む）,その語の読み,見出し：見出し語（読み）\n\n例：\n［喘ぎ］ながら山を登る。,あえぎ,見出し：喘ぐ（あえぐ）\n不況に［喘ぐ］中小企業。,あえぐ,見出し：喘ぐ（あえぐ）\n観衆を［煽って］味方につける。,あおって,見出し：煽る（あおる）\n\nルール：\n・例文が2つ以上ある語は、すべての例文をそれぞれ別の行にする\n・［ ］の中は、例文に書かれている形のまま（送りがなも含める）\n・読みはひらがなで、［ ］の中の語の読みだけを書く\n・区切りには半角カンマ「,」だけを使い、例文の中には半角カンマ「,」も全角カンマ「，」も使わない（読点は「、」）\n・画像の端で切れているなど、読み取れない例文は推測で作らずに書き出さない\n・番号、見出し、説明は付けない',
     prompt: 'この画像から、漢字と読みと意味を「漢字,読み,意味」の形式で1行に1つずつ書き出してください。意味がない場合は「漢字,読み」だけで構いません。意味の中では半角カンマを使わず「、」を使ってください。説明や見出しは不要です。'
   }
 };
@@ -716,12 +729,12 @@ function renderHomeBody() {
   if (q) {
     const hits = [];
     S.data.decks.forEach(d => d.cards.forEach(c => {
-      if ((c.f + '\n' + c.b + '\n' + c.s).toLowerCase().indexOf(q) !== -1) hits.push({ d: d, c: c });
+      if (plainText(c.f + '\n' + c.b + '\n' + c.s).toLowerCase().indexOf(q) !== -1) hits.push({ d: d, c: c });
     }));
     if (!hits.length) return '<h2 class="section-title">検索結果</h2><div class="empty">「' + esc(S.search.trim()) + '」に一致するカードはありません</div>';
     return '<h2 class="section-title">検索結果（' + hits.length + '）</h2><div class="group">' +
       hits.slice(0, 100).map(h => '<button class="result-row" data-action="open-card" data-deck="' + esc(h.d.id) + '" data-id="' + esc(h.c.id) + '">' +
-        '<span class="rf">' + esc(h.c.f) + '</span><span class="rb">' + esc(h.c.b) + ' ・ ' + esc(h.d.name) + '</span></button>').join('') +
+        '<span class="rf" style="' + deckStyle(h.d) + '">' + markTarget(h.c.f) + '</span><span class="rb">' + esc(h.c.b) + ' ・ ' + esc(h.d.name) + '</span></button>').join('') +
       '</div>';
   }
   if (!S.data.decks.length && !S.data.folders.length) return '';
@@ -828,7 +841,7 @@ function renderDeck(deck) {
     '<button class="switch" role="switch" aria-labelledby="lbl-' + key + '" aria-checked="' + (deck.settings[key] ? 'true' : 'false') + '" data-action="toggle-setting" data-key="' + key + '"></button></div>';
   const rows = deck.cards.length ? deck.cards.map(c =>
     '<div class="card-row"><button class="row-main" data-action="edit-card" data-id="' + esc(c.id) + '" aria-label="' + esc(c.f) + '、' + esc(c.b) + '、編集">' +
-    '<span class="rf">' + esc(c.f) + '</span><span class="rb">' + esc(c.b) + '</span></button>' +
+    '<span class="rf" style="' + deckStyle(deck) + '">' + markTarget(c.f) + '</span><span class="rb">' + esc(c.b) + '</span></button>' +
     (c.known
       ? '<button class="badge known" data-action="toggle-known" data-id="' + esc(c.id) + '" aria-label="' + esc(c.f) + '：覚えた。タップでまだに戻す">' + I.checkS + '覚えた</button>'
       : '<button class="badge later" data-action="toggle-known" data-id="' + esc(c.id) + '" aria-label="' + esc(c.f) + '：まだ。タップで覚えたにする">' + I.againS + 'まだ</button>') +
@@ -855,8 +868,18 @@ function renderDeck(deck) {
 }
 
 /* --- 学習 --- */
+const TARGET_RE = /［([^［］]+)］|\[([^\[\]]+)\]/g;
+function hasTarget(t) { TARGET_RE.lastIndex = 0; return TARGET_RE.test(String(t || '')); }
+function plainText(t) { return String(t || '').replace(/[［］\[\]]/g, ''); }
+// 文字を安全にしたうえで、［ ］で囲まれた部分だけ強調する
+function markTarget(t) {
+  return esc(t).replace(TARGET_RE, (m, a, b) => '<b class="tgt">' + (a || b) + '</b>');
+}
+function wordHtml(t, back) {
+  return '<span class="word rounded' + (hasTarget(t) ? ' sent' : '') + '" style="font-size:' + wordSize(t, back) + 'rem"><span class="wt">' + markTarget(t) + '</span></span>';
+}
 function wordSize(t, back) {
-  const n = String(t).length;
+  const n = plainText(t).length;
   const base = n <= 4 ? 2.8 : n <= 8 ? 2.3 : n <= 14 ? 1.8 : n <= 24 ? 1.4 : 1.15;
   return back ? Math.max(1.1, base - 0.3) : base;
 }
@@ -893,16 +916,16 @@ function renderStudy() {
     '<div class="flip-area" style="' + deckStyle(deck) + '">' +
       '<span class="swipe-tag later" id="tag-later" aria-hidden="true">まだ</span><span class="swipe-tag known" id="tag-known" aria-hidden="true">覚えた</span>' +
       '<div class="flip-wrap" id="flip-wrap">' +
-        '<button class="flip-btn' + (st.flipped ? ' flipped' : '') + '" id="flip" data-action="flip" aria-label="' + esc(st.flipped ? '答え：' + back + '。タップで表に戻す' : front + '。タップして答えを表示') + '">' +
+        '<button class="flip-btn' + (st.flipped ? ' flipped' : '') + '" id="flip" data-action="flip" aria-label="' + esc(st.flipped ? '答え：' + plainText(back) + '。タップで表に戻す' : plainText(front) + '。タップして答えを表示') + '">' +
           '<span class="flip-inner">' +
             '<span class="cface front"><span class="band" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><span class="body">' +
               '<span class="side-row"><span class="side-chip">表</span><span class="fl">' + fl + '</span></span>' +
-              '<span class="word rounded" style="font-size:' + wordSize(front) + 'rem">' + esc(front) + '</span>' +
+              wordHtml(front) +
               '<span class="hint">タップしてめくる ・ 左右にスワイプで仕分け</span></span></span>' +
             '<span class="cface back"><span class="band" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><span class="body">' +
               '<span class="side-row"><span class="side-chip back-chip">裏</span><span class="fl">' + bl + '</span></span>' +
-              '<span class="small">' + esc(front) + '</span>' +
-              '<span class="ans"><span class="word rounded" style="font-size:' + wordSize(back, true) + 'rem">' + esc(back) + '</span>' +
+              '<span class="small">' + markTarget(front) + '</span>' +
+              '<span class="ans">' + wordHtml(back, true) +
               (card.s ? '<span class="divider"></span><span class="note">' + esc(card.s) + '</span>' : '') +
               '</span><span class="hint">タップで表に戻る</span></span></span>' +
           '</span>' +
@@ -937,6 +960,11 @@ function renderOverlay() {
   if (S.sheet && S.sheet.type === 'add') updateAddPreview();
 }
 
+function copyRow(mode, title, ex) {
+  return '<button class="copy-row" data-action="copy-prompt" data-mode="' + mode + '">' +
+    '<span class="ct"><span class="ctt">' + title + '</span><span class="cex">' + esc(ex) + '</span></span>' +
+    '<span class="cic">' + I.copy + '<span>コピー</span></span></button>';
+}
 function sheetFrame(title, body, saveLabel, saveDisabled) {
   return '<div class="dim" data-action="sheet-close"></div>' +
     '<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">' +
@@ -963,8 +991,12 @@ function renderSheet() {
       '<p class="group-label" id="add-count">プレビュー</p>' +
       '<div id="add-preview"></div>' +
       '<p class="group-label">写真から作る</p>' +
-      '<div class="group pad2"><p>依頼文をコピーして、単語帳の写真と一緒にClaudeに送ります。返ってきたテキストを上の欄に貼り付けてください。</p>' +
-      '<button class="btn btn-secondary btn-wide" data-action="copy-prompt">' + I.copy + '<span>依頼文をコピー</span></button></div>';
+      '<div class="group">' +
+        '<div class="pad2" style="border-bottom:.5px solid var(--sep)"><p>依頼文をコピーして、単語帳の写真と一緒にClaudeに送ります。返ってきたテキストを上の欄に貼り付けてください。</p></div>' +
+        (deck && deck.kind === 'kanji'
+          ? copyRow('head', '見出し語から作る', '喘ぐ → あえぐ') + copyRow('sent', '例文から作る', '［喘ぎ］ながら山を登る。 → あえぎ')
+          : copyRow('head', '英単語と日本語訳から作る', 'abandon → 捨てる、断念する')) +
+      '</div>';
     return sheetFrame('カードを追加', body, 'カードを追加', true);
   }
   if (sh.type === 'deck') {
@@ -1165,7 +1197,7 @@ function updateAddPreview() {
   if (pv) {
     pv.innerHTML = fresh.length
       ? '<div class="preview-row" style="' + (deck ? deckStyle(deck) : '') + '">' + fresh.slice(0, 30).map(it =>
-          '<div class="mini"><span class="band" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><div class="mb"><span class="mf rounded">' + esc(it.f) + '</span><span class="mbk">' + esc(it.b) + '</span></div></div>').join('') + '</div>'
+          '<div class="mini"><span class="band" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><div class="mb"><span class="mf rounded">' + markTarget(it.f) + '</span><span class="mbk">' + esc(it.b) + '</span></div></div>').join('') + '</div>'
       : '<div class="preview-empty">「表,裏」の形で1行ずつ入力すると、ここにカードが並びます</div>';
   }
 }
@@ -1525,13 +1557,16 @@ const actions = {
   },
   'card-known': el => { S.sheet.known = !S.sheet.known; haptic(); el.setAttribute('aria-checked', S.sheet.known ? 'true' : 'false'); },
   'delete-card': () => { const sh = S.sheet; if (deleteCard(sh.deckId, sh.cardId)) closeSheet(true); },
-  'copy-prompt': async () => {
-    const d = getDeck(S.sheet.deckId); const text = KINDS[d ? d.kind : 'en'].prompt;
-    try { await navigator.clipboard.writeText(text); toast('依頼文をコピーしました'); }
+  'copy-prompt': async el => {
+    const d = getDeck(S.sheet.deckId); const K = KINDS[d ? d.kind : 'en'];
+    const sent = el && el.dataset.mode === 'sent' && K.promptSent;
+    const text = sent ? K.promptSent : K.prompt;
+    const done = sent ? '例文用の依頼文をコピーしました' : '依頼文をコピーしました';
+    try { await navigator.clipboard.writeText(text); toast(done); }
     catch (e) {
       const ta = document.createElement('textarea'); ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
       document.body.appendChild(ta); ta.select(); let ok = false; try { ok = document.execCommand('copy'); } catch (er) {} ta.remove();
-      toast(ok ? '依頼文をコピーしました' : 'コピーできませんでした');
+      toast(ok ? done : 'コピーできませんでした');
     }
   },
   'sheet-save': () => {
