@@ -572,10 +572,22 @@ function normalize(raw) {
       id: f.id ? String(f.id) : uid(),
       name: String(f.name || 'フォルダ').slice(0, 40),
       color: COLORS.some(c => c.key === f.color) ? f.color : 'indigo',
-      open: f.open !== false
+      open: f.open !== false,
+      parentId: f.parentId ? String(f.parentId) : null
     });
   });
   const folderIds = new Set(out.folders.map(f => f.id));
+  // 存在しない親や、自分自身に戻ってくる入れ子は、いちばん上に戻す
+  out.folders.forEach(f => {
+    if (f.parentId && (!folderIds.has(f.parentId) || f.parentId === f.id)) f.parentId = null;
+  });
+  out.folders.forEach(f => {
+    const seen = new Set([f.id]); let p = f.parentId;
+    while (p) {
+      if (seen.has(p)) { f.parentId = null; break; }
+      seen.add(p); const pf = out.folders.find(x => x.id === p); p = pf ? pf.parentId : null;
+    }
+  });
   const decks = raw && Array.isArray(raw.decks) ? raw.decks : [];
   decks.forEach(d => {
     if (!d || typeof d !== 'object') return;
@@ -611,7 +623,27 @@ function save() {
 }
 function getDeck(id) { return S.data.decks.find(d => d.id === id); }
 function getFolder(id) { return id ? S.data.folders.find(f => f.id === id) : null; }
-function folderDecks(id) { return S.data.decks.filter(d => d.folderId === id); }
+function folderDecks(id) { return S.data.decks.filter(d => d.folderId === id); }  // 直下の単語帳
+function childFolders(id) { return S.data.folders.filter(f => (f.parentId || null) === (id || null) && (id || !getFolder(f.parentId))); }
+function descendantIds(id) {  // 自分と、中に入っているすべてのフォルダ
+  const out = [id]; for (let i = 0; i < out.length; i++) childFolders(out[i]).forEach(c => out.push(c.id)); return out;
+}
+function allDecksIn(id) { const ids = new Set(descendantIds(id)); return S.data.decks.filter(d => ids.has(d.folderId)); }
+function folderPath(id) {  // 「高校英語 › 単語」のような場所の表示
+  const names = []; let f = getFolder(id), guard = 0;
+  while (f && guard++ < 50) { names.unshift(f.name); f = getFolder(f.parentId); }
+  return names.join(' › ');
+}
+function folderTree(excludeId) {  // フォルダを階層順に並べる（excludeId とその中身は除く）
+  const out = [];
+  const walk = (pid, depth) => childFolders(pid).forEach(f => {
+    if (f.id === excludeId) return;
+    out.push({ f: f, depth: depth }); walk(f.id, depth + 1);
+  });
+  walk(null, 0);
+  return out;
+}
+function openFolderChain(id) { let f = getFolder(id), guard = 0; while (f && guard++ < 50) { f.open = true; f = getFolder(f.parentId); } }
 function resolve(it) { const deck = getDeck(it.d); const card = deck && deck.cards.find(c => c.id === it.c); return { deck: deck, card: card }; }
 function knownCount(deck) { return deck.cards.filter(c => c.known).length; }
 function parseLines(text) {
@@ -740,17 +772,18 @@ function renderHomeBody() {
   if (!S.data.decks.length && !S.data.folders.length) return '';
   const loose = S.data.decks.filter(d => !getFolder(d.folderId));
   return '<h2 class="section-title">すべての単語帳</h2><div class="deck-list">' +
-    S.data.folders.map(folderHtml).join('') + loose.map(deckRowHtml).join('') + '</div>';
+    childFolders(null).map(folderHtml).join('') + loose.map(deckRowHtml).join('') + '</div>';
 }
 function folderHtml(f) {
-  const ds = folderDecks(f.id);
-  const known = ds.reduce((n, d) => n + knownCount(d), 0), total = ds.reduce((n, d) => n + d.cards.length, 0);
-  const inner = ds.length ? ds.map(deckRowHtml).join('')
-    : '<div class="folder-empty">まだ単語帳がありません。単語帳を長押しして「フォルダに移動」を選ぶと、ここに入れられます。</div>';
+  const subs = childFolders(f.id), ds = folderDecks(f.id), all = allDecksIn(f.id);
+  const known = all.reduce((n, d) => n + knownCount(d), 0), total = all.reduce((n, d) => n + d.cards.length, 0);
+  const inner = (subs.length || ds.length) ? subs.map(folderHtml).join('') + ds.map(deckRowHtml).join('')
+    : '<div class="folder-empty">まだ何も入っていません。単語帳やフォルダを長押しして「フォルダに移動」を選ぶと、ここに入れられます。</div>';
+  const meta = (subs.length ? 'フォルダ' + subs.length + ' ・ ' : '') + all.length + '冊 ・ ' + known + ' / ' + total + ' 覚えた';
   return '<section class="folder' + (f.open ? ' open' : '') + '" data-folder="' + esc(f.id) + '" style="--deck: var(--c-' + esc(f.color) + ')">' +
-    '<button class="folder-head" data-action="toggle-folder" data-id="' + esc(f.id) + '" aria-expanded="' + (f.open ? 'true' : 'false') + '" aria-label="フォルダ ' + esc(f.name) + '、' + ds.length + '冊">' +
+    '<button class="folder-head" data-action="toggle-folder" data-id="' + esc(f.id) + '" aria-expanded="' + (f.open ? 'true' : 'false') + '" aria-label="フォルダ ' + esc(f.name) + '、' + esc(meta) + '">' +
       '<span class="folder-ic">' + I.folder + '</span>' +
-      '<span class="folder-txt"><span class="fname">' + esc(f.name) + '</span><span class="fmeta">' + ds.length + '冊 ・ ' + known + ' / ' + total + ' 覚えた</span></span>' +
+      '<span class="folder-txt"><span class="fname">' + esc(f.name) + '</span><span class="fmeta">' + esc(meta) + '</span></span>' +
       '<span class="fchev" aria-hidden="true">' + I.chev + '</span>' +
     '</button>' +
     '<div class="folder-body"' + (f.open ? '' : ' inert') + '><div class="folder-clip"><div class="folder-items">' + inner + '</div></div></div>' +
@@ -850,7 +883,7 @@ function renderDeck(deck) {
     '<div class="topbar"><button class="glass glass-btn" data-action="back" aria-label="単語帳一覧に戻る">' + I.back + '</button>' +
     '<button class="glass glass-btn" data-action="deck-menu" aria-label="その他の操作" aria-haspopup="menu">' + I.more + '</button></div>' +
     '<div class="deck-hero stack" style="' + deckStyle(deck) + '"><div class="card"><span class="band" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span>' +
-    '<div class="body"><span class="eyebrow">' + (getFolder(deck.folderId) ? esc(getFolder(deck.folderId).name) + ' ・ ' : '') + K.name + ' ・ ' + t + '枚</span><h1>' + esc(deck.name) + '</h1></div></div></div>' +
+    '<div class="body"><span class="eyebrow">' + (getFolder(deck.folderId) ? esc(folderPath(deck.folderId)) + ' ・ ' : '') + K.name + ' ・ ' + t + '枚</span><h1>' + esc(deck.name) + '</h1></div></div></div>' +
     '<div class="stats"><div class="stat known"><span class="lab">' + I.checkS + '覚えた</span><span class="val rounded">' + k + '</span></div>' +
     '<div class="stat later"><span class="lab">' + I.againS + 'まだ</span><span class="val rounded">' + later + '</span></div></div>' +
     '<div class="actions">' +
@@ -1007,7 +1040,7 @@ function renderSheet() {
       '<div class="group"><label class="cell"><span class="sr">単語帳の名前</span><input class="field left" data-input="deck-name" maxlength="60" placeholder="単語帳の名前（例：ターゲット1900 Section 1）" value="' + esc(sh.name) + '"></label>' +
         (S.data.folders.length ? '<label class="cell tight"><span class="cell-label">フォルダ</span><select class="select" data-input="deck-folder">' +
           '<option value=""' + (sh.folderId ? '' : ' selected') + '>入れない</option>' +
-          S.data.folders.map(f => '<option value="' + esc(f.id) + '"' + (f.id === sh.folderId ? ' selected' : '') + '>' + esc(f.name) + '</option>').join('') +
+          folderTree().map(t => '<option value="' + esc(t.f.id) + '"' + (t.f.id === sh.folderId ? ' selected' : '') + '>' + '　'.repeat(t.depth) + esc(t.f.name) + '</option>').join('') +
         '</select></label>' : '') + '</div>' +
       '<p class="group-label">種類' + (lockKind ? '（カードがあるため変更できません）' : '') + '</p>' +
       '<div class="group pad"><div class="seg" role="group" aria-label="種類" style="--i:' + (sh.kind === 'kanji' ? 1 : 0) + '"><span class="seg-pill" aria-hidden="true"></span>' +
@@ -1026,19 +1059,23 @@ function renderSheet() {
       '<div class="group pad"><div class="swatches" role="radiogroup" aria-label="色">' +
         COLORS.map(c => '<button class="swatch" role="radio" aria-checked="' + (sh.color === c.key) + '" aria-label="' + c.name + '" data-action="deck-color" data-color="' + c.key + '" style="--deck: var(--c-' + c.key + ')"></button>').join('') +
       '</div></div>' +
-      (sh.moveDeckId ? '<p class="group-label">作ったあと、「' + esc((getDeck(sh.moveDeckId) || {}).name || '') + '」をこのフォルダに入れます</p>' : '');
+      (!sh.id && getFolder(sh.parentId) ? '<p class="group-label">「' + esc(folderPath(sh.parentId)) + '」の中に作ります</p>' : '') +
+      (sh.moveDeckId ? '<p class="group-label">作ったあと、「' + esc((getDeck(sh.moveDeckId) || {}).name || '') + '」をこのフォルダに入れます</p>' : '') +
+      (sh.moveFolderId ? '<p class="group-label">作ったあと、フォルダ「' + esc((getFolder(sh.moveFolderId) || {}).name || '') + '」をこの中に入れます</p>' : '');
     return sheetFrame(sh.id ? 'フォルダを編集' : '新しいフォルダ', body, sh.id ? '保存' : '作成', false);
   }
   if (sh.type === 'move') {
-    const deck = getDeck(sh.deckId); if (!deck) return '';
-    const row = (id, name, color, icon) => '<button class="pick-row" data-action="move-to" data-folder="' + esc(id) + '"' + (color ? ' style="--deck: var(--c-' + esc(color) + ')"' : '') + '>' +
+    const deck = sh.deckId ? getDeck(sh.deckId) : null, folder = sh.folderId ? getFolder(sh.folderId) : null;
+    if (!deck && !folder) return '';
+    const cur = (deck ? deck.folderId : folder.parentId) || '';
+    const row = (id, name, color, icon, depth) => '<button class="pick-row" data-action="move-to" data-folder="' + esc(id) + '" style="padding-left:' + (16 + depth * 22) + 'px' + (color ? '; --deck: var(--c-' + esc(color) + ')' : '') + '">' +
       '<span class="pic">' + icon + '</span><span class="pname">' + esc(name) + '</span>' +
-      ((deck.folderId || '') === id ? '<span class="pcheck" aria-label="現在の場所">' + I.check + '</span>' : '') + '</button>';
+      (cur === id ? '<span class="pcheck" aria-label="現在の場所">' + I.check + '</span>' : '') + '</button>';
     const body =
-      '<p class="group-label" style="margin-top:6px">「' + esc(deck.name) + '」の移動先</p>' +
+      '<p class="group-label" style="margin-top:6px">' + (deck ? '「' + esc(deck.name) + '」' : 'フォルダ「' + esc(folder.name) + '」') + 'の移動先</p>' +
       '<div class="group">' +
-        S.data.folders.map(f => row(f.id, f.name, f.color, I.folderS)).join('') +
-        row('', 'フォルダに入れない', null, I.stack) +
+        row('', deck ? 'フォルダに入れない' : 'いちばん上に置く', null, I.stack, 0) +
+        folderTree(folder ? folder.id : null).map(t => row(t.f.id, t.f.name, t.f.color, I.folderS, t.depth)).join('') +
       '</div>' +
       '<div class="group" style="margin-top:20px"><button class="pick-row add" data-action="move-new"><span class="pic" style="--deck: var(--accent)">' + I.folderAdd + '</span><span class="pname">新しいフォルダを作って入れる</span></button></div>';
     return sheetFrame('フォルダに移動', body, null, false);
@@ -1141,7 +1178,7 @@ function openContextFor(row) {
   if (menuState && menuState.row === row) return;
   if (row.classList.contains('folder-head')) {
     const f = getFolder(row.dataset.id); if (!f) return;
-    const ds = folderDecks(f.id);
+    const ds = allDecksIn(f.id);
     const later = ds.reduce((n, d) => n + d.cards.filter(c => !c.known).length, 0);
     const all = ds.reduce((n, d) => n + d.cards.length, 0);
     openContext(row, [
@@ -1149,7 +1186,9 @@ function openContextFor(row) {
       { label: 'すべて学習', icon: I.play, disabled: !all, run: () => startStudy(null, 'all', f.id) },
       '-',
       { label: 'この中に単語帳を作る', icon: I.stack, run: () => openNewDeck(true, f.id) },
+      { label: 'この中にフォルダを作る', icon: I.folderAdd, run: () => openFolderSheet(null, f.id) },
       { label: '名前と色を変更', icon: I.pencil, run: () => openFolderSheet(f.id) },
+      { label: 'フォルダに移動', icon: I.move, run: () => openMoveFolder(f.id) },
       '-',
       { label: 'フォルダを削除', icon: I.trash, destructive: true, run: () => deleteFolder(f.id) }
     ]);
@@ -1204,7 +1243,7 @@ function updateAddPreview() {
 
 /* ===== 学習の進行 ===== */
 function startStudy(deckId, mode, folderId) {
-  const decks = deckId ? [getDeck(deckId)] : folderId ? folderDecks(folderId) : S.data.decks;
+  const decks = deckId ? [getDeck(deckId)] : folderId ? allDecksIn(folderId) : S.data.decks;
   const items = [];
   decks.forEach(d => d.cards.forEach(c => { if (mode === 'all' || !c.known) items.push({ d: d.id, c: c.id }); }));
   if (!items.length) { toast(mode === 'later' ? '「まだ」のカードはありません' : 'カードがありません'); return; }
@@ -1392,11 +1431,11 @@ function nextFolderColor() {
   const free = COLORS.find(c => used.indexOf(c.key) === -1);
   return (free || COLORS[S.data.folders.length % COLORS.length]).key;
 }
-function openFolderOf(d) { const f = getFolder(d.folderId); if (f) f.open = true; }
-function openFolderSheet(id) {
+function openFolderOf(d) { openFolderChain(d.folderId); }
+function openFolderSheet(id, parentId) {
   const f = getFolder(id);
   S.sheet = f ? { type: 'folder', key: 'folder-' + f.id, id: f.id, name: f.name, color: f.color }
-              : { type: 'folder', key: 'folder-new', id: null, name: '', color: nextFolderColor() };
+              : { type: 'folder', key: 'folder-new', id: null, name: '', color: nextFolderColor(), parentId: getFolder(parentId) ? parentId : null };
   renderOverlay();
   if (!f) setTimeout(() => { const n = document.querySelector('[data-input="folder-name"]'); if (n) n.focus(); }, 350);
 }
@@ -1404,16 +1443,26 @@ function openMove(deckId) {
   if (!getDeck(deckId)) return;
   S.sheet = { type: 'move', key: 'move-' + deckId, deckId: deckId }; renderOverlay();
 }
+function openMoveFolder(folderId) {
+  if (!getFolder(folderId)) return;
+  S.sheet = { type: 'move', key: 'movef-' + folderId, folderId: folderId }; renderOverlay();
+}
 function deleteFolder(id) {
   const f = getFolder(id); if (!f) return;
-  const n = folderDecks(f.id).length;
-  if (!confirm('フォルダ「' + f.name + '」を削除します。' + (n ? '中の単語帳' + n + '冊は削除されず、フォルダの外に出ます。' : ''))) return;
-  S.data.decks.forEach(d => { if (d.folderId === f.id) d.folderId = null; });
+  const n = folderDecks(f.id).length, m = childFolders(f.id).length;
+  const parent = getFolder(f.parentId);
+  const inside = [n ? '単語帳' + n + '冊' : '', m ? 'フォルダ' + m + '個' : ''].filter(Boolean).join('と');
+  const where = parent ? '「' + parent.name + '」の中に移ります' : 'フォルダの外に出ます';
+  if (!confirm('フォルダ「' + f.name + '」を削除します。' + (inside ? '中の' + inside + 'は削除されず、' + where + '。' : ''))) return;
+  // 中身はひとつ上の場所に移す
+  S.data.decks.forEach(d => { if (d.folderId === f.id) d.folderId = f.parentId || null; });
+  S.data.folders.forEach(x => { if (x.parentId === f.id) x.parentId = f.parentId || null; });
   S.data.folders = S.data.folders.filter(x => x.id !== f.id);
   save(); render(); toast('フォルダを削除しました');
 }
 // 移動先・作成したフォルダを少し光らせて知らせる
 function flashFolder(id) {
+  if (!document.querySelector('.folder[data-folder="' + CSS.escape(id) + '"]')) return;
   const sec = document.querySelector('.folder[data-folder="' + CSS.escape(id) + '"]'); if (!sec) return;
   const head = sec.querySelector('.folder-head');
   try { sec.scrollIntoView({ block: 'nearest', behavior: reduceMotion() ? 'auto' : 'smooth' }); } catch (e) {}
@@ -1462,20 +1511,29 @@ const actions = {
     el.setAttribute('aria-expanded', f.open ? 'true' : 'false');
     const body = sec.querySelector('.folder-body');
     if (f.open) body.removeAttribute('inert'); else body.setAttribute('inert', '');
-    if (f.open) sec.querySelectorAll('.folder-items > *').forEach((n, i) => anim(n, [{ opacity: 0, transform: 'translateY(-10px)' }, { opacity: 1, transform: 'none' }], { duration: 420, delay: 40 + i * 40, easing: SPRING.soft }));
+    if (f.open) sec.querySelectorAll(':scope > .folder-body > .folder-clip > .folder-items > *').forEach((n, i) => anim(n, [{ opacity: 0, transform: 'translateY(-10px)' }, { opacity: 1, transform: 'none' }], { duration: 420, delay: 40 + i * 40, easing: SPRING.soft }));
   },
   'move-to': el => {
-    const d = getDeck(S.sheet && S.sheet.deckId); if (!d) return;
+    const sh = S.sheet; if (!sh) return;
     const id = el.dataset.folder || null;
-    d.folderId = getFolder(id) ? id : null; openFolderOf(d); save(); haptic();
-    closeSheet(true); render();
-    const f = getFolder(d.folderId);
-    toast(f ? '「' + f.name + '」に移動しました' : 'フォルダの外に出しました');
-    if (f) flashFolder(f.id);
+    const target = getFolder(id) ? id : null;
+    if (sh.folderId) {
+      const mf = getFolder(sh.folderId); if (!mf) return;
+      if (target && descendantIds(mf.id).indexOf(target) !== -1) return; // 自分の中には入れられない
+      mf.parentId = target; openFolderChain(target);
+    } else {
+      const d = getDeck(sh.deckId); if (!d) return;
+      d.folderId = target; openFolderOf(d);
+    }
+    save(); haptic(); closeSheet(true); render();
+    const f = getFolder(target);
+    toast(f ? '「' + f.name + '」に移動しました' : (sh.folderId ? 'いちばん上に移動しました' : 'フォルダの外に出しました'));
+    flashFolder(sh.folderId || target || '');
   },
   'move-new': () => {
-    const id = S.sheet && S.sheet.deckId;
-    S.sheet = { type: 'folder', key: 'folder-new', id: null, name: '', color: nextFolderColor(), moveDeckId: id };
+    const id = S.sheet && S.sheet.deckId, fid = S.sheet && S.sheet.folderId;
+    S.sheet = { type: 'folder', key: 'folder-new', id: null, name: '', color: nextFolderColor(), moveDeckId: id || null, moveFolderId: fid || null,
+      parentId: fid && getFolder(fid) ? (getFolder(fid).parentId || null) : null };
     renderOverlay();
     setTimeout(() => { const f = document.querySelector('[data-input="folder-name"]'); if (f) f.focus(); }, 350);
   },
@@ -1616,13 +1674,15 @@ const actions = {
         const f = getFolder(sh.id); if (f) { f.name = name; f.color = sh.color; }
         save(); closeSheet(true); render();
       } else {
-        const f = { id: uid(), name: name, color: sh.color, open: true };
+        const f = { id: uid(), name: name, color: sh.color, open: true, parentId: getFolder(sh.parentId) ? sh.parentId : null };
         S.data.folders.push(f);
+        openFolderChain(f.id);
         const md = getDeck(sh.moveDeckId); if (md) md.folderId = f.id;
+        const mf = getFolder(sh.moveFolderId); if (mf && mf.id !== f.id) mf.parentId = f.id;
         save(); haptic(); closeSheet(true);
         if (S.screen === 'deck' || S.screen === 'settings') { S.screen = 'home'; S.deckId = null; render('pop'); } else render();
-        toast(md ? '「' + name + '」を作って移動しました' : 'フォルダ「' + name + '」を作りました');
-        flashFolder(f.id);
+        toast((md || mf) ? '「' + name + '」を作って移動しました' : 'フォルダ「' + name + '」を作りました');
+        flashFolder(mf ? mf.id : f.id);
       }
     } else if (sh.type === 'card') {
       if (!sh.f.trim() || !sh.b.trim()) { toast('表と裏は入力してください'); return; }
