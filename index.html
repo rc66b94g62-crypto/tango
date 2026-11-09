@@ -153,9 +153,9 @@ svg{display:block; flex-shrink:0;}
 .fname{font-size:1rem; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
 .fmeta{font-size:.765rem; color:var(--label2); font-variant-numeric:tabular-nums;}
 .fchev{width:28px; display:grid; place-items:center; color:var(--chev); transition:transform .45s var(--spring);}
-.folder.open .fchev{transform:rotate(90deg);}
+.folder.open > .folder-head .fchev{transform:rotate(90deg);}
 .folder-body{display:grid; grid-template-rows:0fr; transition:grid-template-rows .45s var(--smooth), opacity .3s; opacity:0;}
-.folder.open .folder-body{grid-template-rows:1fr; opacity:1;}
+.folder.open > .folder-body{grid-template-rows:1fr; opacity:1;}
 .folder-clip{min-height:0; overflow:hidden;}
 .folder-items{position:relative; display:flex; flex-direction:column; gap:14px; padding:14px 0 10px 18px;}
 .folder-items::before{content:""; position:absolute; left:6px; top:6px; bottom:12px; width:3px; border-radius:2px; background:var(--deck); opacity:.35;}
@@ -1509,7 +1509,7 @@ const actions = {
     const sec = el.closest('.folder');
     sec.classList.toggle('open', f.open);
     el.setAttribute('aria-expanded', f.open ? 'true' : 'false');
-    const body = sec.querySelector('.folder-body');
+    const body = sec.querySelector(':scope > .folder-body');
     if (f.open) body.removeAttribute('inert'); else body.setAttribute('inert', '');
     if (f.open) sec.querySelectorAll(':scope > .folder-body > .folder-clip > .folder-items > *').forEach((n, i) => anim(n, [{ opacity: 0, transform: 'translateY(-10px)' }, { opacity: 1, transform: 'none' }], { duration: 420, delay: 40 + i * 40, easing: SPRING.soft }));
   },
