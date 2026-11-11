@@ -13,6 +13,9 @@
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" href="./icons/icon-192.png">
+<link rel="stylesheet" href="./vendor/katex/katex.min.css">
+<script src="./vendor/katex/katex.min.js"></script>
+<script src="./vendor/katex/contrib/mhchem.min.js"></script>
 <style>
 :root{
   color-scheme: light dark;
@@ -144,6 +147,16 @@ svg{display:block; flex-shrink:0;}
 .copy-row .ctt{font-weight:600;}
 .copy-row .cex{font-size:.765rem; color:var(--label2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
 .copy-row .cic{color:var(--accent); display:flex; align-items:center; gap:4px; font-size:.765rem; font-weight:600;}
+
+/* 数式 */
+.word .wt{overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch;}
+.word .katex-display{margin:.1em 0; overflow-x:auto; overflow-y:hidden;}
+.word.mathy{font-family:-apple-system, "Hiragino Sans", sans-serif; font-weight:500;}
+.math-err{color:var(--red); font-family:ui-monospace, Menlo, monospace; font-size:.8em;}
+.rf .katex, .rb .katex, .mf .katex, .mbk .katex, .note .katex, .small .katex{font-size:1.05em;}
+.tpl-row{display:flex; gap:8px; flex-wrap:wrap;}
+.tpl{min-height:36px; padding:0 14px; border-radius:18px; border:1.5px solid var(--sep); background:transparent; color:var(--label); font-size:.882rem;}
+.tpl[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600;}
 
 /* フォルダ */
 .folder{display:flex; flex-direction:column;}
@@ -432,6 +445,52 @@ const KINDS = {
   }
 };
 
+const QA_TEMPLATES = [
+  { key: 'chem-term', name: '化学の用語', f: '用語', b: '説明',
+    ex: ['モル,物質量の単位。粒子 $6.02 \\times 10^{23}$ 個の集まりを1molとする', '中和,酸と塩基が反応して塩と水ができる反応'] },
+  { key: 'chem-formula', name: '化学式', f: '物質名', b: '化学式',
+    ex: ['硫酸,$\\ce{H2SO4}$', 'アンモニウムイオン,$\\ce{NH4+}$'] },
+  { key: 'chem-law', name: '化学の公式・反応式', f: '名前', b: '式',
+    ex: ['理想気体の状態方程式,$PV = nRT$,P：圧力　V：体積　n：物質量　T：絶対温度', '水素の燃焼,$\\ce{2H2 + O2 -> 2H2O}$'] },
+  { key: 'math', name: '数学の公式', f: '公式の名前', b: '公式',
+    ex: ['二次方程式の解の公式,$$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$', '加法定理（sin）,$\\sin(\\alpha + \\beta) = \\sin\\alpha\\cos\\beta + \\cos\\alpha\\sin\\beta$'] },
+  { key: 'free', name: '自由に入力', f: '表', b: '裏', ex: ['問題,答え,補足'] }
+];
+const SPEAK_LANGS = [{ key: 'none', name: 'なし' }, { key: 'ja', name: '日本語' }, { key: 'en', name: '英語' }];
+function cleanQa(q) {
+  const dq = defaultQa(); q = q || {};
+  return { tpl: QA_TEMPLATES.some(t => t.key === q.tpl) ? q.tpl : 'free', f: (String(q.f || '').trim() || dq.f).slice(0, 12), b: (String(q.b || '').trim() || dq.b).slice(0, 12), speak: SPEAK_LANGS.some(l => l.key === q.speak) ? q.speak : 'none' };
+}
+function qaTemplate(key) { return QA_TEMPLATES.find(t => t.key === key) || QA_TEMPLATES[QA_TEMPLATES.length - 1]; }
+function defaultQa() { const t = QA_TEMPLATES[0]; return { tpl: t.key, f: t.f, b: t.b, speak: 'none' }; }
+function qaPrompt(qa) {
+  const t = qaTemplate(qa.tpl);
+  return 'この画像（教科書・問題集・ノートなど）から、暗記用の一問一答カードを作ります。1行に1枚、「' + qa.f + ',' + qa.b + ',補足」の形式で書き出してください（補足がなければ「' + qa.f + ',' + qa.b + '」だけで構いません）。\n\n' +
+    'ルール：\n' +
+    '・数式は $ と $ で囲んだLaTeXで書く（例：$PV = nRT$、$\\frac{a}{b}$、$x^2$、$\\sqrt{3}$）\n' +
+    '・分数や根号を含む大きな式は $$ と $$ で囲む\n' +
+    '・化学式・イオン・反応式は $\\ce{ }$ で書く（例：$\\ce{H2SO4}$、$\\ce{Cu^2+}$、$\\ce{2H2 + O2 -> 2H2O}$）\n' +
+    '・区切りには半角カンマ「,」だけを使う。$ の外の文章ではカンマを使わず「、」を使う\n' +
+    '・画像で読み取れない部分は推測で作らない\n' +
+    '・番号、見出し、説明は付けない\n\n' +
+    '例：\n' + t.ex.join('\n');
+}
+// 単語帳ごとの「種類」の設定（英単語・漢字は固定、一問一答は単語帳ごとに決める）
+function kindOf(deck) {
+  if (!deck || deck.kind !== 'qa') return KINDS[deck && deck.kind === 'kanji' ? 'kanji' : 'en'];
+  const qa = deck.qa || defaultQa();
+  const t = qaTemplate(qa.tpl);
+  return {
+    name: t.key === 'free' ? '一問一答' : t.name,
+    labels: [qa.f, qa.b, '補足'], seg: [qa.f + ' → ' + qa.b, qa.b + ' → ' + qa.f],
+    lang: qa.speak === 'en' ? 'en-US' : qa.speak === 'ja' ? 'ja-JP' : null,
+    speakIdx: 0, speakLabel: qa.f + 'を読み上げ', speakBtn: '読み上げ',
+    hint: '1行に1枚 ・ ' + qa.f + ',' + qa.b + ',補足（補足は省略可）・数式は $ $ で囲む',
+    placeholder: t.ex.slice(0, 2).join('\n'),
+    prompt: qaPrompt(qa), math: true
+  };
+}
+
 /* ===== アイコン ===== */
 const I = {
   gear: '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>',
@@ -591,10 +650,11 @@ function normalize(raw) {
   const decks = raw && Array.isArray(raw.decks) ? raw.decks : [];
   decks.forEach(d => {
     if (!d || typeof d !== 'object') return;
-    const kind = d.kind === 'kanji' ? 'kanji' : 'en';
+    const kind = d.kind === 'kanji' ? 'kanji' : d.kind === 'qa' ? 'qa' : 'en';
     const color = COLORS.some(c => c.key === d.color) ? d.color : 'indigo';
     const deck = makeDeck(String(d.name || '名前のない単語帳').slice(0, 60), kind, color);
     if (d.id) deck.id = String(d.id);
+    if (kind === 'qa') deck.qa = cleanQa(d.qa);
     if (d.created) deck.created = Number(d.created) || Date.now();
     deck.folderId = d.folderId && folderIds.has(String(d.folderId)) ? String(d.folderId) : null;
     const st = d.settings || {};
@@ -646,9 +706,21 @@ function folderTree(excludeId) {  // フォルダを階層順に並べる（excl
 function openFolderChain(id) { let f = getFolder(id), guard = 0; while (f && guard++ < 50) { f.open = true; f = getFolder(f.parentId); } }
 function resolve(it) { const deck = getDeck(it.d); const card = deck && deck.cards.find(c => c.id === it.c); return { deck: deck, card: card }; }
 function knownCount(deck) { return deck.cards.filter(c => c.known).length; }
+function splitFields(line) {
+  const parts = []; let cur = '', inMath = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '\\' && i + 1 < line.length) { cur += ch + line[i + 1]; i++; continue; }
+    if (ch === '$') inMath = !inMath;
+    if (!inMath && (ch === ',' || ch === '，' || ch === '\t')) { parts.push(cur); cur = ''; continue; }
+    cur += ch;
+  }
+  parts.push(cur);
+  return parts;
+}
 function parseLines(text) {
   return String(text || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(l => {
-    const parts = l.split(/[,，\t]/).map(p => p.trim());
+    const parts = splitFields(l).map(p => p.trim());
     if (parts.length < 2 || !parts[0] || !parts[1]) return null;
     return { f: parts[0], b: parts[1], s: parts.slice(2).filter(Boolean).join('、') };
   }).filter(Boolean);
@@ -761,12 +833,12 @@ function renderHomeBody() {
   if (q) {
     const hits = [];
     S.data.decks.forEach(d => d.cards.forEach(c => {
-      if (plainText(c.f + '\n' + c.b + '\n' + c.s).toLowerCase().indexOf(q) !== -1) hits.push({ d: d, c: c });
+      if (searchText(c.f + '\n' + c.b + '\n' + c.s).toLowerCase().indexOf(q) !== -1 || (c.f + '\n' + c.b).toLowerCase().indexOf(q) !== -1) hits.push({ d: d, c: c });
     }));
     if (!hits.length) return '<h2 class="section-title">検索結果</h2><div class="empty">「' + esc(S.search.trim()) + '」に一致するカードはありません</div>';
     return '<h2 class="section-title">検索結果（' + hits.length + '）</h2><div class="group">' +
       hits.slice(0, 100).map(h => '<button class="result-row" data-action="open-card" data-deck="' + esc(h.d.id) + '" data-id="' + esc(h.c.id) + '">' +
-        '<span class="rf" style="' + deckStyle(h.d) + '">' + markTarget(h.c.f) + '</span><span class="rb">' + esc(h.c.b) + ' ・ ' + esc(h.d.name) + '</span></button>').join('') +
+        '<span class="rf" style="' + deckStyle(h.d) + '">' + richText(h.c.f, h.d.kind === 'qa') + '</span><span class="rb">' + richText(h.c.b, h.d.kind === 'qa') + ' ・ ' + esc(h.d.name) + '</span></button>').join('') +
       '</div>';
   }
   if (!S.data.decks.length && !S.data.folders.length) return '';
@@ -791,10 +863,10 @@ function folderHtml(f) {
 }
 function deckRowHtml(d) {
     const k = knownCount(d), t = d.cards.length, pct = t ? Math.round(k / t * 100) : 0;
-    return '<button class="deck-row" data-action="open-deck" data-id="' + esc(d.id) + '" style="' + deckStyle(d) + '" aria-label="' + esc(d.name) + '、' + KINDS[d.kind].name + '、' + t + '枚中' + k + '枚覚えた">' +
+    return '<button class="deck-row" data-action="open-deck" data-id="' + esc(d.id) + '" style="' + deckStyle(d) + '" aria-label="' + esc(d.name) + '、' + kindOf(d).name + '、' + t + '枚中' + k + '枚覚えた">' +
       '<span class="face"><span class="band" aria-hidden="true"></span>' +
       '<span class="hole-cell" aria-hidden="true"><span class="hole"></span></span>' +
-      '<span class="info"><span class="top"><span class="name">' + esc(d.name) + '</span><span class="kind">' + KINDS[d.kind].name + '</span></span>' +
+      '<span class="info"><span class="top"><span class="name">' + esc(d.name) + '</span><span class="kind">' + esc(kindOf(d).name) + '</span></span>' +
       '<span class="progress"><span class="bar"><span style="width:' + pct + '%"></span></span><span class="num">' + k + ' / ' + t + '</span></span></span>' +
       '<span class="chev-cell" aria-hidden="true">' + I.chev + '</span></span></button>';
 }
@@ -868,13 +940,13 @@ function demoFlip() {
 
 /* --- 単語帳の詳細 --- */
 function renderDeck(deck) {
-  const K = KINDS[deck.kind];
+  const K = kindOf(deck), M = !!K.math;
   const k = knownCount(deck), t = deck.cards.length, later = t - k;
   const sw = (key, label) => '<div class="cell"><span id="lbl-' + key + '">' + label + '</span>' +
     '<button class="switch" role="switch" aria-labelledby="lbl-' + key + '" aria-checked="' + (deck.settings[key] ? 'true' : 'false') + '" data-action="toggle-setting" data-key="' + key + '"></button></div>';
   const rows = deck.cards.length ? deck.cards.map(c =>
-    '<div class="card-row"><button class="row-main" data-action="edit-card" data-id="' + esc(c.id) + '" aria-label="' + esc(c.f) + '、' + esc(c.b) + '、編集">' +
-    '<span class="rf" style="' + deckStyle(deck) + '">' + markTarget(c.f) + '</span><span class="rb">' + esc(c.b) + '</span></button>' +
+    '<div class="card-row"><button class="row-main" data-action="edit-card" data-id="' + esc(c.id) + '" aria-label="' + esc(searchText(c.f)) + '、' + esc(searchText(c.b)) + '、編集">' +
+    '<span class="rf" style="' + deckStyle(deck) + '">' + richText(c.f, M) + '</span><span class="rb">' + richText(c.b, M) + '</span></button>' +
     (c.known
       ? '<button class="badge known" data-action="toggle-known" data-id="' + esc(c.id) + '" aria-label="' + esc(c.f) + '：覚えた。タップでまだに戻す">' + I.checkS + '覚えた</button>'
       : '<button class="badge later" data-action="toggle-known" data-id="' + esc(c.id) + '" aria-label="' + esc(c.f) + '：まだ。タップで覚えたにする">' + I.againS + 'まだ</button>') +
@@ -892,7 +964,7 @@ function renderDeck(deck) {
     '</div>' +
     '<div class="group settings">' +
       '<div class="cell tight"><span>出題の向き</span><button class="cell-btn" data-action="cycle-dir" aria-label="出題の向きを変更。現在 ' + K.seg[deck.settings.dir] + '"><span>' + K.seg[deck.settings.dir] + '</span>' + I.updown + '</button></div>' +
-      sw('shuffle', 'シャッフル') + sw('speak', K.speakLabel) +
+      sw('shuffle', 'シャッフル') + (K.lang ? sw('speak', K.speakLabel) : '') +
     '</div>' +
     '<div class="list-head"><h2>カード</h2><button class="text-btn" data-action="add-cards">' + I.plusS + '<span>追加</span></button></div>' +
     (rows ? '<div class="group">' + rows + '</div>' : '<div class="empty">カードがありません。「追加」から入れてください。</div>') +
@@ -904,15 +976,40 @@ function renderDeck(deck) {
 const TARGET_RE = /［([^［］]+)］|\[([^\[\]]+)\]/g;
 function hasTarget(t) { TARGET_RE.lastIndex = 0; return TARGET_RE.test(String(t || '')); }
 function plainText(t) { return String(t || '').replace(/[［］\[\]]/g, ''); }
+const MATH_RE = /\$\$([\s\S]+?)\$\$|\$([^$\n]+?)\$/g;
+function hasMath(t) { MATH_RE.lastIndex = 0; return MATH_RE.test(String(t || '')); }
+function renderTex(tex, display) {
+  try {
+    if (window.katex) return katex.renderToString(tex, { displayMode: display, throwOnError: false, strict: 'ignore', output: 'html' });
+  } catch (e) { /* 表示できない式はそのまま */ }
+  return '<span class="math-err">' + esc(tex) + '</span>';
+}
+// 一問一答では $…$ を数式として表示。それ以外の部分は［ ］の強調だけ
+function richText(t, math) {
+  t = String(t == null ? '' : t);
+  if (!math || !hasMath(t)) return markTarget(t);
+  let out = '', last = 0, m; MATH_RE.lastIndex = 0;
+  while ((m = MATH_RE.exec(t))) {
+    out += markTarget(t.slice(last, m.index)) + renderTex(m[1] != null ? m[1] : m[2], m[1] != null);
+    last = MATH_RE.lastIndex;
+  }
+  return out + markTarget(t.slice(last));
+}
+// 検索や読み上げ用に、数式の記号を取り除いた文字
+function searchText(t) {
+  return plainText(String(t || '').replace(/\\ce\{([^}]*)\}/g, '$1').replace(/\\[a-zA-Z]+/g, ' ').replace(/[$^_{}]/g, ''));
+}
 // 文字を安全にしたうえで、［ ］で囲まれた部分だけ強調する
 function markTarget(t) {
   return esc(t).replace(TARGET_RE, (m, a, b) => '<b class="tgt">' + (a || b) + '</b>');
 }
-function wordHtml(t, back) {
-  return '<span class="word rounded' + (hasTarget(t) ? ' sent' : '') + '" style="font-size:' + wordSize(t, back) + 'rem"><span class="wt">' + markTarget(t) + '</span></span>';
+function wordHtml(t, back, math) {
+  const mathy = math && hasMath(t);
+  return '<span class="word rounded' + (hasTarget(t) ? ' sent' : '') + (mathy ? ' mathy' : '') + '" style="font-size:' + wordSize(t, back, mathy) + 'rem"><span class="wt">' + richText(t, math) + '</span></span>';
 }
-function wordSize(t, back) {
-  const n = plainText(t).length;
+function wordSize(t, back, mathy) {
+  // 数式は記号の分だけ長く見積もらないよう、だいたいの見た目の長さで決める
+  const n = mathy ? searchText(t).replace(/\s+/g, '').length * 0.9 + 2 : plainText(t).length;
   const base = n <= 4 ? 2.8 : n <= 8 ? 2.3 : n <= 14 ? 1.8 : n <= 24 ? 1.4 : 1.15;
   return back ? Math.max(1.1, base - 0.3) : base;
 }
@@ -933,7 +1030,7 @@ function renderStudy() {
       '<button class="btn btn-secondary btn-wide" data-action="study-close">閉じる</button></div></div></div></div>';
   }
   const r = resolve(st.queue[0]);
-  const deck = r.deck, card = r.card, K = KINDS[deck.kind];
+  const deck = r.deck, card = r.card, K = kindOf(deck), M = !!K.math;
   const front = st.dir === 0 ? card.f : card.b;
   const back = st.dir === 0 ? card.b : card.f;
   const fl = K.labels[st.dir === 0 ? 0 : 1], bl = K.labels[st.dir === 0 ? 1 : 0];
@@ -949,23 +1046,23 @@ function renderStudy() {
     '<div class="flip-area" style="' + deckStyle(deck) + '">' +
       '<span class="swipe-tag later" id="tag-later" aria-hidden="true">まだ</span><span class="swipe-tag known" id="tag-known" aria-hidden="true">覚えた</span>' +
       '<div class="flip-wrap" id="flip-wrap">' +
-        '<button class="flip-btn' + (st.flipped ? ' flipped' : '') + '" id="flip" data-action="flip" aria-label="' + esc(st.flipped ? '答え：' + plainText(back) + '。タップで表に戻す' : plainText(front) + '。タップして答えを表示') + '">' +
+        '<button class="flip-btn' + (st.flipped ? ' flipped' : '') + '" id="flip" data-action="flip" aria-label="' + esc(st.flipped ? '答え：' + searchText(back) + '。タップで表に戻す' : searchText(front) + '。タップして答えを表示') + '">' +
           '<span class="flip-inner">' +
             '<span class="cface front"><span class="band" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><span class="body">' +
               '<span class="side-row"><span class="side-chip">表</span><span class="fl">' + fl + '</span></span>' +
-              wordHtml(front) +
+              wordHtml(front, false, M) +
               '<span class="hint">タップしてめくる ・ 左右にスワイプで仕分け</span></span></span>' +
             '<span class="cface back"><span class="band" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><span class="body">' +
               '<span class="side-row"><span class="side-chip back-chip">裏</span><span class="fl">' + bl + '</span></span>' +
-              '<span class="small">' + markTarget(front) + '</span>' +
-              '<span class="ans">' + wordHtml(back, true) +
-              (card.s ? '<span class="divider"></span><span class="note">' + esc(card.s) + '</span>' : '') +
+              '<span class="small">' + richText(front, M) + '</span>' +
+              '<span class="ans">' + wordHtml(back, true, M) +
+              (card.s ? '<span class="divider"></span><span class="note">' + richText(card.s, M) + '</span>' : '') +
               '</span><span class="hint">タップで表に戻る</span></span></span>' +
           '</span>' +
         '</button>' +
       '</div>' +
     '</div>' +
-    '<div class="speak-row"><button class="glass pill" data-action="speak" aria-label="' + K.speakBtn + 'を聞く">' + I.speaker + '<span>' + K.speakBtn + '</span></button></div>' +
+    '<div class="speak-row">' + (K.lang ? '<button class="glass pill" data-action="speak" aria-label="' + K.speakBtn + 'を聞く">' + I.speaker + '<span>' + K.speakBtn + '</span></button>' : '<span style="height:44px"></span>') + '</div>' +
     '<div class="answers">' +
       '<button class="answer later" data-action="answer" data-v="later">' + I.again + '<span>まだ</span></button>' +
       '<button class="answer known" data-action="answer" data-v="known">' + I.check + '<span>覚えた</span></button>' +
@@ -993,6 +1090,22 @@ function renderOverlay() {
   if (S.sheet && S.sheet.type === 'add') updateAddPreview();
 }
 
+function qaSettingsHtml(qa) {
+  return '<p class="group-label">ひな形（選ぶと下の名前が入ります）</p>' +
+    '<div class="group pad"><div class="tpl-row">' +
+      QA_TEMPLATES.map(t => '<button class="tpl" data-action="qa-tpl" data-tpl="' + t.key + '" aria-pressed="' + (qa.tpl === t.key) + '">' + t.name + '</button>').join('') +
+    '</div></div>' +
+    '<p class="group-label">表と裏の名前</p>' +
+    '<div class="group">' +
+      '<label class="cell"><span class="cell-label">表</span><input class="field" data-input="qa-f" maxlength="12" value="' + esc(qa.f) + '" placeholder="例：用語"></label>' +
+      '<label class="cell"><span class="cell-label">裏</span><input class="field" data-input="qa-b" maxlength="12" value="' + esc(qa.b) + '" placeholder="例：説明"></label>' +
+    '</div>' +
+    '<p class="group-label">表の読み上げ</p>' +
+    '<div class="group pad"><div class="seg" role="group" aria-label="表の読み上げ" style="--n:3; --i:' + SPEAK_LANGS.findIndex(l => l.key === qa.speak) + '"><span class="seg-pill" aria-hidden="true"></span>' +
+      SPEAK_LANGS.map(l => '<button data-action="qa-speak" data-lang="' + l.key + '" aria-pressed="' + (qa.speak === l.key) + '">' + l.name + '</button>').join('') +
+    '</div></div>' +
+    '<p class="group-label" style="line-height:1.5">数式は $ と $ で囲むと、きれいな式で表示されます（例：$x^2$、$\\frac{a}{b}$、化学式は $\\ce{H2O}$）</p>';
+}
 function copyRow(mode, title, ex) {
   return '<button class="copy-row" data-action="copy-prompt" data-mode="' + mode + '">' +
     '<span class="ct"><span class="ctt">' + title + '</span><span class="cex">' + esc(ex) + '</span></span>' +
@@ -1014,7 +1127,7 @@ function renderSheet() {
   const sh = S.sheet;
   if (sh.type === 'add') {
     const deck = getDeck(sh.deckId);
-    const K = KINDS[deck ? deck.kind : 'en'];
+    const K = kindOf(deck);
     const opts = S.data.decks.map(d => '<option value="' + esc(d.id) + '"' + (d.id === sh.deckId ? ' selected' : '') + '>' + esc(d.name) + '</option>').join('') +
       '<option value="__new">＋ 新しい単語帳…</option>';
     const body =
@@ -1028,6 +1141,8 @@ function renderSheet() {
         '<div class="pad2" style="border-bottom:.5px solid var(--sep)"><p>依頼文をコピーして、単語帳の写真と一緒にClaudeに送ります。返ってきたテキストを上の欄に貼り付けてください。</p></div>' +
         (deck && deck.kind === 'kanji'
           ? copyRow('head', '見出し語から作る', '喘ぐ → あえぐ') + copyRow('sent', '例文から作る', '［喘ぎ］ながら山を登る。 → あえぎ')
+          : deck && deck.kind === 'qa'
+          ? copyRow('head', '一問一答として作る（数式・化学式つき）', K.labels[0] + ' → ' + K.labels[1])
           : copyRow('head', '英単語と日本語訳から作る', 'abandon → 捨てる、断念する')) +
       '</div>';
     return sheetFrame('カードを追加', body, 'カードを追加', true);
@@ -1043,9 +1158,10 @@ function renderSheet() {
           folderTree().map(t => '<option value="' + esc(t.f.id) + '"' + (t.f.id === sh.folderId ? ' selected' : '') + '>' + '　'.repeat(t.depth) + esc(t.f.name) + '</option>').join('') +
         '</select></label>' : '') + '</div>' +
       '<p class="group-label">種類' + (lockKind ? '（カードがあるため変更できません）' : '') + '</p>' +
-      '<div class="group pad"><div class="seg" role="group" aria-label="種類" style="--i:' + (sh.kind === 'kanji' ? 1 : 0) + '"><span class="seg-pill" aria-hidden="true"></span>' +
-        ['en', 'kanji'].map(k => '<button data-action="deck-kind" data-kind="' + k + '" aria-pressed="' + (sh.kind === k) + '"' + (lockKind ? ' disabled' : '') + '>' + KINDS[k].name + '</button>').join('') +
+      '<div class="group pad"><div class="seg" role="group" aria-label="種類" style="--n:3; --i:' + ['en', 'kanji', 'qa'].indexOf(sh.kind) + '"><span class="seg-pill" aria-hidden="true"></span>' +
+        ['en', 'kanji', 'qa'].map(k => '<button data-action="deck-kind" data-kind="' + k + '" aria-pressed="' + (sh.kind === k) + '"' + (lockKind ? ' disabled' : '') + '>' + (k === 'qa' ? '一問一答' : KINDS[k].name) + '</button>').join('') +
       '</div></div>' +
+      (sh.kind === 'qa' ? qaSettingsHtml(sh.qa) : '') +
       '<p class="group-label">色</p>' +
       '<div class="group pad"><div class="swatches" role="radiogroup" aria-label="色">' +
         COLORS.map(c => '<button class="swatch" role="radio" aria-checked="' + (sh.color === c.key) + '" aria-label="' + c.name + '" data-action="deck-color" data-color="' + c.key + '" style="--deck: var(--c-' + c.key + ')"></button>').join('') +
@@ -1082,7 +1198,7 @@ function renderSheet() {
   }
   if (sh.type === 'card') {
     const deck = getDeck(sh.deckId);
-    const K = KINDS[deck.kind];
+    const K = kindOf(deck);
     const fld = (key, label, ph) => '<label class="cell"><span class="cell-label">' + label + '</span><input class="field" data-input="card-' + key + '" value="' + esc(sh[key]) + '" placeholder="' + ph + '" autocapitalize="off" autocomplete="off"></label>';
     const body =
       '<div class="group">' + fld('f', K.labels[0], '必須') + fld('b', K.labels[1], '必須') + fld('s', K.labels[2], '任意') + '</div>' +
@@ -1214,7 +1330,7 @@ function openContextFor(row) {
     openContext(row, [
       { label: 'カードを編集', icon: I.pencil, run: () => editCard(d.id, c.id) },
       { label: c.known ? '「まだ」に戻す' : '「覚えた」にする', icon: c.known ? I.again : I.check, run: () => toggleKnown(d.id, c.id) },
-      { label: '読み上げ', icon: I.speaker, run: () => { const K = KINDS[d.kind]; speak(K.speakIdx === 0 ? c.f : c.b, K.lang); } },
+      { label: '読み上げ', icon: I.speaker, disabled: !kindOf(d).lang, run: () => { const K = kindOf(d); if (K.lang) speak(searchText(K.speakIdx === 0 ? c.f : c.b), K.lang); } },
       '-',
       { label: 'カードを削除', icon: I.trash, destructive: true, run: () => deleteCard(d.id, c.id) }
     ]);
@@ -1236,7 +1352,7 @@ function updateAddPreview() {
   if (pv) {
     pv.innerHTML = fresh.length
       ? '<div class="preview-row" style="' + (deck ? deckStyle(deck) : '') + '">' + fresh.slice(0, 30).map(it =>
-          '<div class="mini"><span class="band" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><div class="mb"><span class="mf rounded">' + markTarget(it.f) + '</span><span class="mbk">' + esc(it.b) + '</span></div></div>').join('') + '</div>'
+          '<div class="mini"><span class="band" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><div class="mb"><span class="mf rounded">' + richText(it.f, deck && deck.kind === 'qa') + '</span><span class="mbk">' + richText(it.b, deck && deck.kind === 'qa') + '</span></div></div>').join('') + '</div>'
       : '<div class="preview-empty">「表,裏」の形で1行ずつ入力すると、ここにカードが並びます</div>';
   }
 }
@@ -1312,12 +1428,13 @@ function speak(text, lang) {
 function currentCard() { const st = S.study; return st && !st.finished && st.queue.length ? resolve(st.queue[0]) : null; }
 function speakCurrent() {
   const r = currentCard(); if (!r) return;
-  const K = KINDS[r.deck.kind];
-  speak(K.speakIdx === 0 ? r.card.f : r.card.b, K.lang);
+  const K = kindOf(r.deck); if (!K.lang) return;
+  const t = K.speakIdx === 0 ? r.card.f : r.card.b;
+  speak(K.math ? searchText(t) : t, K.lang);
 }
 function autoSpeak() {
   const r = currentCard(); if (!r || !r.deck.settings.speak) return;
-  const K = KINDS[r.deck.kind];
+  const K = kindOf(r.deck); if (!K.lang) return;
   const speakOnFront = (K.speakIdx === 0) === (S.study.dir === 0);
   if (speakOnFront !== S.study.flipped) speakCurrent();
 }
@@ -1403,7 +1520,7 @@ function openAdd(deckId) {
   S.sheet = { type: 'add', key: 'add', deckId: id, text: '' }; renderOverlay();
 }
 function openNewDeck(thenAdd, folderId) {
-  S.sheet = { type: 'deck', key: 'new', id: null, name: '', kind: 'en', color: nextColor(), thenAdd: thenAdd !== false, folderId: folderId || null };
+  S.sheet = { type: 'deck', key: 'new', id: null, name: '', kind: 'en', color: nextColor(), thenAdd: thenAdd !== false, folderId: folderId || null, qa: defaultQa() };
   renderOverlay();
   setTimeout(() => { const f = document.querySelector('[data-input="deck-name"]'); if (f) f.focus(); }, 350);
 }
@@ -1470,7 +1587,7 @@ function flashFolder(id) {
 }
 function editDeck(id) {
   const d = getDeck(id); if (!d) return;
-  S.sheet = { type: 'deck', key: 'edit', id: d.id, name: d.name, kind: d.kind, color: d.color, folderId: d.folderId || null }; renderOverlay();
+  S.sheet = { type: 'deck', key: 'edit', id: d.id, name: d.name, kind: d.kind, color: d.color, folderId: d.folderId || null, qa: Object.assign(defaultQa(), d.qa || {}) }; renderOverlay();
 }
 function resetDeck(id) {
   const d = getDeck(id); if (!d) return;
@@ -1603,9 +1720,26 @@ const actions = {
   'sheet-close': () => closeSheet(false),
   'deck-kind': el => {
     if (S.sheet.kind === el.dataset.kind) return;
+    const wasQa = S.sheet.kind === 'qa', isQa = el.dataset.kind === 'qa';
     S.sheet.kind = el.dataset.kind; haptic();
+    if (!S.sheet.qa) S.sheet.qa = defaultQa();
     const seg = el.closest('.seg');
-    seg.style.setProperty('--i', el.dataset.kind === 'kanji' ? 1 : 0);
+    seg.style.setProperty('--i', ['en', 'kanji', 'qa'].indexOf(el.dataset.kind));
+    seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === el ? 'true' : 'false'));
+    if (wasQa !== isQa) setTimeout(renderOverlay, 220); // 一問一答の設定を出す・しまう
+  },
+  'qa-tpl': el => {
+    const t = qaTemplate(el.dataset.tpl); const qa = S.sheet.qa;
+    qa.tpl = t.key; qa.f = t.f; qa.b = t.b; haptic();
+    document.querySelectorAll('.tpl').forEach(b => b.setAttribute('aria-pressed', b === el ? 'true' : 'false'));
+    const fi = document.querySelector('[data-input="qa-f"]'), bi = document.querySelector('[data-input="qa-b"]');
+    if (fi) fi.value = t.f;
+    if (bi) bi.value = t.b;
+  },
+  'qa-speak': el => {
+    S.sheet.qa.speak = el.dataset.lang; haptic();
+    const seg = el.closest('.seg');
+    seg.style.setProperty('--i', SPEAK_LANGS.findIndex(l => l.key === el.dataset.lang));
     seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === el ? 'true' : 'false'));
   },
   'deck-color': el => {
@@ -1616,7 +1750,7 @@ const actions = {
   'card-known': el => { S.sheet.known = !S.sheet.known; haptic(); el.setAttribute('aria-checked', S.sheet.known ? 'true' : 'false'); },
   'delete-card': () => { const sh = S.sheet; if (deleteCard(sh.deckId, sh.cardId)) closeSheet(true); },
   'copy-prompt': async el => {
-    const d = getDeck(S.sheet.deckId); const K = KINDS[d ? d.kind : 'en'];
+    const d = getDeck(S.sheet.deckId); const K = kindOf(d);
     const sent = el && el.dataset.mode === 'sent' && K.promptSent;
     const text = sent ? K.promptSent : K.prompt;
     const done = sent ? '例文用の依頼文をコピーしました' : '依頼文をコピーしました';
@@ -1651,10 +1785,11 @@ const actions = {
       }
       if (sh.id) {
         const d = getDeck(sh.id); d.name = name; d.color = sh.color; if (!d.cards.length) d.kind = sh.kind;
+        if (d.kind === 'qa') d.qa = cleanQa(sh.qa);
         d.folderId = getFolder(sh.folderId) ? sh.folderId : null; openFolderOf(d);
         save(); closeSheet(true); render();
       } else {
-        const d = makeDeck(name, sh.kind, sh.color); d.folderId = getFolder(sh.folderId) ? sh.folderId : null; openFolderOf(d);
+        const d = makeDeck(name, sh.kind, sh.color); if (d.kind === 'qa') d.qa = cleanQa(sh.qa); d.folderId = getFolder(sh.folderId) ? sh.folderId : null; openFolderOf(d);
         S.data.decks.push(d); save(); haptic();
         S.deckId = d.id; S.screen = 'deck'; S.search = '';
         if (sh.thenAdd) S.sheet = { type: 'add', key: 'add-' + d.id, deckId: d.id, text: sh.pendingText || '' };
@@ -1734,6 +1869,8 @@ document.addEventListener('input', e => {
   if (k === 'add-text') { S.sheet.text = t.value; updateAddPreview(); }
   else if (k === 'deck-name') S.sheet.name = t.value;
   else if (k === 'folder-name') S.sheet.name = t.value;
+  else if (k === 'qa-f') S.sheet.qa.f = t.value.slice(0, 12);
+  else if (k === 'qa-b') S.sheet.qa.b = t.value.slice(0, 12);
   else if (k === 'card-f') S.sheet.f = t.value;
   else if (k === 'card-b') S.sheet.b = t.value;
   else if (k === 'card-s') S.sheet.s = t.value;
@@ -1746,7 +1883,7 @@ document.addEventListener('change', e => {
   if (t.dataset && t.dataset.input === 'add-deck' && S.sheet) {
     if (t.value === '__new') {
       const pending = S.sheet.text;
-      S.sheet = { type: 'deck', key: 'new', id: null, name: '', kind: 'en', color: nextColor(), thenAdd: true, pendingText: pending, folderId: null };
+      S.sheet = { type: 'deck', key: 'new', id: null, name: '', kind: 'en', color: nextColor(), thenAdd: true, pendingText: pending, folderId: null, qa: defaultQa() };
       renderOverlay();
       return;
     }
