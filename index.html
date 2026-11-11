@@ -352,6 +352,9 @@ body.dragging, body.dragging *{-webkit-user-select:none !important; user-select:
 body.sheet-open{background:#000;}
 #app.receded{transform:translateY(calc(env(safe-area-inset-top) + 6px)) scale(.92); border-radius:16px; filter:brightness(var(--recede));}
 button, .deck-row{transition:transform .45s var(--spring), filter .2s, background-color .2s, opacity .2s;}
+/* アプリ全体で文字の選択（長押しの青い選択・コピーのメニュー）を出さない。入力欄だけは選択・入力できるようにする */
+html, body, #app, #overlay, #menu-layer, #toast{-webkit-user-select:none; user-select:none; -webkit-touch-callout:none;}
+input, textarea, select, [contenteditable]{-webkit-user-select:text; user-select:text; -webkit-touch-callout:default;}
 button, .deck-row, .card-row{-webkit-touch-callout:none; -webkit-user-select:none; user-select:none;}
 .pressing{transform:scale(.96);}
 .glass-btn.pressing, .swatch.pressing{transform:scale(.86);}
@@ -1250,6 +1253,7 @@ function openMenu(anchor, items) {
 }
 function openContext(row, items) {
   closeMenu(true);
+  clearSelection();
   haptic();
   const layer = document.getElementById('menu-layer');
   const r = row.getBoundingClientRect(), vw = window.innerWidth, vh = window.innerHeight;
@@ -1762,7 +1766,7 @@ const actions = {
     try { await navigator.clipboard.writeText(text); toast(done); }
     catch (e) {
       const ta = document.createElement('textarea'); ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
-      document.body.appendChild(ta); ta.select(); let ok = false; try { ok = document.execCommand('copy'); } catch (er) {} ta.remove();
+      document.body.appendChild(ta); ta.focus(); ta.select(); let ok = false; try { ok = document.execCommand('copy'); } catch (er) {} ta.remove();
       toast(ok ? done : 'コピーできませんでした');
     }
   },
@@ -2074,6 +2078,22 @@ document.addEventListener('pointerup', endDrag);
   if (S.screen === 'study' && e.target.closest && e.target.closest('#flip-wrap')) e.preventDefault();
 }, { passive: false }));
 document.addEventListener('pointercancel', endDrag);
+// 入力欄以外では、文字の選択を始めさせない（iPhoneの長押しで青く選択されるのを防ぐ）
+function isEditable(el) { return !!(el && el.closest && el.closest('input, textarea, select, [contenteditable="true"]')); }
+function clearSelection() {
+  try {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount && !isEditable(document.activeElement)) sel.removeAllRanges();
+  } catch (e) {}
+}
+document.addEventListener('selectstart', e => { if (!isEditable(e.target.nodeType === 1 ? e.target : e.target.parentElement)) e.preventDefault(); });
+document.addEventListener('selectionchange', () => {
+  const sel = window.getSelection && window.getSelection();
+  if (sel && sel.rangeCount && !sel.isCollapsed && !isEditable(document.activeElement)) {
+    const n = sel.anchorNode; const el = n && (n.nodeType === 1 ? n : n.parentElement);
+    if (!isEditable(el)) sel.removeAllRanges();
+  }
+});
 document.addEventListener('contextmenu', e => {
   const row = e.target.closest('.deck-row, .card-row, .folder-head');
   if (!row || row.closest('#menu-layer')) return;
