@@ -1,5 +1,5 @@
 // 単語帳アプリのオフライン対応。アプリを更新したら CACHE の番号を上げる。
-const CACHE = 'tango-v10';
+const CACHE = 'tango-v11';
 const ASSETS = [
   './',
   './index.html',
