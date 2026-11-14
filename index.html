@@ -166,6 +166,17 @@ svg{display:block; flex-shrink:0;}
 .ver-row .ver svg{color:var(--chev);}
 .cl-list{margin:0; padding:12px 16px 12px 34px; display:flex; flex-direction:column; gap:6px; font-size:.941rem; line-height:1.5;}
 
+/* 並び替え */
+.grip{flex-shrink:0; width:44px; min-height:44px; display:grid; place-items:center; color:var(--label2); touch-action:none; cursor:grab; border:0; background:transparent; padding:0;}
+.reordering .deck-row .chev-cell, .reordering .fchev{display:none;}
+.reordering .deck-row{cursor:default;}
+.reorder-item{position:relative;}
+.lifted{z-index:6; transition:none !important;}
+.lifted > .face, .lifted > .folder-head{box-shadow:0 14px 36px rgba(0,0,0,.22) !important; transform:scale(1.02);}
+.shifting{transition:transform .28s var(--smooth);}
+.list-head .text-btn.done{font-weight:600;}
+.card-hint{margin:8px 32px 0; font-size:.765rem; color:var(--label2);}
+
 /* フォルダ */
 .folder{display:flex; flex-direction:column;}
 .folder-head{display:flex; align-items:center; gap:12px; width:100%; min-height:62px; padding:10px 8px 10px 12px; border:0; border-radius:16px; background:var(--surface); box-shadow:0 1px 2px var(--shadow); color:var(--label); text-align:left;}
@@ -505,8 +516,9 @@ function kindOf(deck) {
   };
 }
 
-const APP_VERSION = '1.8.0';
+const APP_VERSION = '1.9.0';
 const CHANGELOG = [
+  { v: '1.9.0', d: '2026-11-14', items: ['単語帳とフォルダを並び替えられるように', '学習中のカードをその場で編集できるように', '単語帳の中でカードを押すと編集できることを案内'] },
   { v: '1.8.0', d: '2026-11-11', items: ['設定画面にバージョンと変更履歴を表示', '更新したときに一度だけお知らせを表示'] },
   { v: '1.7.1', d: '2026-11-11', items: ['長押しで文字が青く選択されないように修正'] },
   { v: '1.7.0', d: '2026-11-11', items: ['色を6色追加（全12色）', '新しい単語帳の色をランダムに選ぶように'] },
@@ -530,6 +542,8 @@ const I = {
   folderS: '<svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M2.8 7.3A2.5 2.5 0 0 1 5.3 4.8h3.9c.6 0 1.1.2 1.5.6l1.3 1.3c.4.4.9.6 1.5.6h5.2a2.5 2.5 0 0 1 2.5 2.5v7.4a2.5 2.5 0 0 1-2.5 2.5H5.3a2.5 2.5 0 0 1-2.5-2.5z"/></svg>',
   folderAdd: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h3.6l2 2h7.4A2.5 2.5 0 0 1 21 9.5v7A2.5 2.5 0 0 1 18.5 19h-13A2.5 2.5 0 0 1 3 16.5z"/><path d="M12 10.5v5M9.5 13h5"/></svg>',
   move: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h3.6l2 2h7.4A2.5 2.5 0 0 1 21 9.5v7A2.5 2.5 0 0 1 18.5 19h-13A2.5 2.5 0 0 1 3 16.5z"/><path d="M9 13h6M13 10.5l2.5 2.5-2.5 2.5"/></svg>',
+  grip: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M5 8h14M5 12h14M5 16h14"/></svg>',
+  edit: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/></svg>',
   more: '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>',
   back: '<svg width="11" height="19" viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2L2 10l8 8"/></svg>',
   close: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
@@ -876,32 +890,68 @@ function renderHomeBody() {
   }
   if (!S.data.decks.length && !S.data.folders.length) return '';
   const loose = S.data.decks.filter(d => !getFolder(d.folderId));
-  return '<h2 class="section-title">すべての単語帳</h2><div class="deck-list">' +
+  const canSort = S.data.decks.length + S.data.folders.length > 1;
+  return '<div class="list-head"><h2>すべての単語帳</h2>' +
+      (canSort ? '<button class="text-btn' + (S.reorder ? ' done' : '') + '" data-action="reorder">' + (S.reorder ? '完了' : '並び替え') + '</button>' : '') + '</div>' +
+    (S.reorder ? '<p class="card-hint" style="margin:-4px 20px 10px">右の ≡ をドラッグして並べ替えます。フォルダの中を並べ替えるときは、フォルダを押して開いてください。</p>' : '') +
+    '<div class="deck-list' + (S.reorder ? ' reordering' : '') + '">' +
     childFolders(null).map(folderHtml).join('') + loose.map(deckRowHtml).join('') + '</div>';
 }
+function folderOpen(f) { return S.reorder ? !!(S.reorderOpen && S.reorderOpen.has(f.id)) : f.open; }
 function folderHtml(f) {
   const subs = childFolders(f.id), ds = folderDecks(f.id), all = allDecksIn(f.id);
   const known = all.reduce((n, d) => n + knownCount(d), 0), total = all.reduce((n, d) => n + d.cards.length, 0);
   const inner = (subs.length || ds.length) ? subs.map(folderHtml).join('') + ds.map(deckRowHtml).join('')
     : '<div class="folder-empty">まだ何も入っていません。単語帳やフォルダを長押しして「フォルダに移動」を選ぶと、ここに入れられます。</div>';
   const meta = (subs.length ? 'フォルダ' + subs.length + ' ・ ' : '') + all.length + '冊 ・ ' + known + ' / ' + total + ' 覚えた';
-  return '<section class="folder' + (f.open ? ' open' : '') + '" data-folder="' + esc(f.id) + '" style="--deck: var(--c-' + esc(f.color) + ')">' +
-    '<button class="folder-head" data-action="toggle-folder" data-id="' + esc(f.id) + '" aria-expanded="' + (f.open ? 'true' : 'false') + '" aria-label="フォルダ ' + esc(f.name) + '、' + esc(meta) + '">' +
+  const open = folderOpen(f);
+  return '<section class="folder reorder-item' + (open ? ' open' : '') + '" data-kind="folder" data-folder="' + esc(f.id) + '" style="--deck: var(--c-' + esc(f.color) + ')">' +
+    '<button class="folder-head" data-action="toggle-folder" data-id="' + esc(f.id) + '" aria-expanded="' + (open ? 'true' : 'false') + '" aria-label="フォルダ ' + esc(f.name) + '、' + esc(meta) + '">' +
       '<span class="folder-ic">' + I.folder + '</span>' +
       '<span class="folder-txt"><span class="fname">' + esc(f.name) + '</span><span class="fmeta">' + esc(meta) + '</span></span>' +
       '<span class="fchev" aria-hidden="true">' + I.chev + '</span>' +
+      (S.reorder ? gripHtml('folder', f.id, f.name) : '') +
     '</button>' +
-    '<div class="folder-body"' + (f.open ? '' : ' inert') + '><div class="folder-clip"><div class="folder-items">' + inner + '</div></div></div>' +
+    '<div class="folder-body"' + (open ? '' : ' inert') + '><div class="folder-clip"><div class="folder-items">' + inner + '</div></div></div>' +
   '</section>';
 }
 function deckRowHtml(d) {
     const k = knownCount(d), t = d.cards.length, pct = t ? Math.round(k / t * 100) : 0;
-    return '<button class="deck-row" data-action="open-deck" data-id="' + esc(d.id) + '" style="' + deckStyle(d) + '" aria-label="' + esc(d.name) + '、' + kindOf(d).name + '、' + t + '枚中' + k + '枚覚えた">' +
+    return '<button class="deck-row reorder-item" data-kind="deck" data-action="open-deck" data-id="' + esc(d.id) + '" style="' + deckStyle(d) + '" aria-label="' + esc(d.name) + '、' + kindOf(d).name + '、' + t + '枚中' + k + '枚覚えた">' +
       '<span class="face"><span class="band" aria-hidden="true"></span>' +
       '<span class="hole-cell" aria-hidden="true"><span class="hole"></span></span>' +
       '<span class="info"><span class="top"><span class="name">' + esc(d.name) + '</span><span class="kind">' + esc(kindOf(d).name) + '</span></span>' +
       '<span class="progress"><span class="bar"><span style="width:' + pct + '%"></span></span><span class="num">' + k + ' / ' + t + '</span></span></span>' +
-      '<span class="chev-cell" aria-hidden="true">' + I.chev + '</span></span></button>';
+      '<span class="chev-cell" aria-hidden="true">' + I.chev + '</span>' +
+      (S.reorder ? gripHtml('deck', d.id, d.name) : '') + '</span></button>';
+}
+// 並び替えのつまみ（ドラッグのほか、選んで上下の矢印キーでも動かせる）
+function gripHtml(kind, id, name) {
+  return '<span class="grip" role="button" tabindex="0" data-grip="' + kind + '" data-id="' + esc(id) + '" aria-label="' + esc(name) + 'を並び替え（上下の矢印キーで移動）">' + I.grip + '</span>';
+}
+// 同じ場所（同じフォルダの中）にある、同じ種類の並び
+function siblingIds(kind, id) {
+  if (kind === 'folder') { const f = getFolder(id); return f ? childFolders(f.parentId || null).map(x => x.id) : []; }
+  const d = getDeck(id); if (!d) return [];
+  const fid = getFolder(d.folderId) ? d.folderId : null;
+  return S.data.decks.filter(x => (getFolder(x.folderId) ? x.folderId : null) === fid).map(x => x.id);
+}
+// 新しい順番で、データの並びを入れ替える（ほかの場所の並びはそのまま）
+function applyOrder(kind, ids) {
+  const arr = kind === 'folder' ? S.data.folders : S.data.decks;
+  const set = new Set(ids);
+  const slots = []; arr.forEach((x, i) => { if (set.has(x.id)) slots.push(i); });
+  if (slots.length !== ids.length) return false;
+  const byId = {}; arr.forEach(x => { byId[x.id] = x; });
+  slots.forEach((slot, k) => { arr[slot] = byId[ids[k]]; });
+  return true;
+}
+function moveSibling(kind, id, delta) {
+  const ids = siblingIds(kind, id); const i = ids.indexOf(id), j = i + delta;
+  if (i < 0 || j < 0 || j >= ids.length) return;
+  ids.splice(i, 1); ids.splice(j, 0, id);
+  applyOrder(kind, ids); save(); haptic(); render();
+  const g = document.querySelector('.grip[data-grip="' + kind + '"][data-id="' + CSS.escape(id) + '"]'); if (g) g.focus({ preventScroll: false });
 }
 
 /* --- 設定 --- */
@@ -1002,6 +1052,7 @@ function renderDeck(deck) {
       sw('shuffle', 'シャッフル') + (K.lang ? sw('speak', K.speakLabel) : '') +
     '</div>' +
     '<div class="list-head"><h2>カード</h2><button class="text-btn" data-action="add-cards">' + I.plusS + '<span>追加</span></button></div>' +
+    (deck.cards.length ? '<p class="card-hint" style="margin:-4px 20px 10px">カードを押すと内容を編集できます。長押しでほかの操作も出ます。</p>' : '') +
     (rows ? '<div class="group">' + rows + '</div>' : '<div class="empty">カードがありません。「追加」から入れてください。</div>') +
     '<div style="height:calc(40px + env(safe-area-inset-bottom))"></div>' +
     '</div></div></div>';
@@ -1097,7 +1148,8 @@ function renderStudy() {
         '</button>' +
       '</div>' +
     '</div>' +
-    '<div class="speak-row">' + (K.lang ? '<button class="glass pill" data-action="speak" aria-label="' + K.speakBtn + 'を聞く">' + I.speaker + '<span>' + K.speakBtn + '</span></button>' : '<span style="height:44px"></span>') + '</div>' +
+    '<div class="speak-row" style="gap:10px">' + (K.lang ? '<button class="glass pill" data-action="speak" aria-label="' + K.speakBtn + 'を聞く">' + I.speaker + '<span>' + K.speakBtn + '</span></button>' : '') +
+      '<button class="glass pill" data-action="study-edit" aria-label="このカードを編集">' + I.edit + '<span>編集</span></button></div>' +
     '<div class="answers">' +
       '<button class="answer later" data-action="answer" data-v="later">' + I.again + '<span>まだ</span></button>' +
       '<button class="answer known" data-action="answer" data-v="known">' + I.check + '<span>覚えた</span></button>' +
@@ -1658,20 +1710,31 @@ function deleteCard(deckId, cardId) {
   const d = getDeck(deckId); const c = d && d.cards.find(x => x.id === cardId); if (!c) return false;
   if (!confirm('「' + c.f + '」のカードを削除します。この操作は取り消せません。')) return false;
   d.cards = d.cards.filter(x => x.id !== c.id); save();
+  const st = S.study;
+  if (st && !st.finished) {
+    const before = st.queue.length;
+    st.queue = st.queue.filter(it => resolve(it).card);
+    const removed = before - st.queue.length;
+    if (removed) { st.total = Math.max(st.done, st.total - removed); st.flipped = false; }
+    if (!st.queue.length) st.finished = true;
+  }
   render(); toast('カードを削除しました');
   return true;
 }
 
 const actions = {
-  'toggle-folder': el => {
+  'toggle-folder': (el, e) => {
+    if (e && e.target.closest && e.target.closest('.grip')) return;
     const f = getFolder(el.dataset.id); if (!f) return;
-    f.open = !f.open; save();
+    let open;
+    if (S.reorder) { if (!S.reorderOpen) S.reorderOpen = new Set(); open = !S.reorderOpen.has(f.id); if (open) S.reorderOpen.add(f.id); else S.reorderOpen.delete(f.id); }
+    else { f.open = !f.open; save(); open = f.open; }
     const sec = el.closest('.folder');
-    sec.classList.toggle('open', f.open);
-    el.setAttribute('aria-expanded', f.open ? 'true' : 'false');
+    sec.classList.toggle('open', open);
+    el.setAttribute('aria-expanded', open ? 'true' : 'false');
     const body = sec.querySelector(':scope > .folder-body');
-    if (f.open) body.removeAttribute('inert'); else body.setAttribute('inert', '');
-    if (f.open) sec.querySelectorAll(':scope > .folder-body > .folder-clip > .folder-items > *').forEach((n, i) => anim(n, [{ opacity: 0, transform: 'translateY(-10px)' }, { opacity: 1, transform: 'none' }], { duration: 420, delay: 40 + i * 40, easing: SPRING.soft }));
+    if (open) body.removeAttribute('inert'); else body.setAttribute('inert', '');
+    if (open) sec.querySelectorAll(':scope > .folder-body > .folder-clip > .folder-items > *').forEach((n, i) => anim(n, [{ opacity: 0, transform: 'translateY(-10px)' }, { opacity: 1, transform: 'none' }], { duration: 420, delay: 40 + i * 40, easing: SPRING.soft }));
   },
   'move-to': el => {
     const sh = S.sheet; if (!sh) return;
@@ -1698,7 +1761,9 @@ const actions = {
     setTimeout(() => { const f = document.querySelector('[data-input="folder-name"]'); if (f) f.focus(); }, 350);
   },
   'changelog': () => { S.sheet = { type: 'changelog', key: 'changelog' }; renderOverlay(); },
-  'open-settings': () => { S.screen = 'settings'; S.deckId = null; S.search = ''; render('push'); },
+  'reorder': () => { S.reorder = !S.reorder; S.reorderOpen = new Set(); if (S.reorder) S.search = ''; haptic(); render(); },
+  'study-edit': () => { const r = currentCard(); if (r) editCard(r.deck.id, r.card.id); },
+  'open-settings': () => { S.reorder = false; S.screen = 'settings'; S.deckId = null; S.search = ''; render('push'); },
   'pref-toggle': el => {
     const k = el.dataset.key; P[k] = !P[k]; savePrefs(); applyPrefs();
     el.setAttribute('aria-checked', P[k] ? 'true' : 'false');
@@ -1737,7 +1802,8 @@ const actions = {
     if (it && it.run) it.run();
   },
   'clear-search': () => { S.search = ''; const i = document.getElementById('search'); if (i) i.value = ''; updateSearch(); },
-  'open-deck': el => { S.deckId = el.dataset.id; S.screen = 'deck'; S.search = ''; render('push'); },
+  'open-deck': (el, e) => {
+    if (S.reorder) { if (e && e.target.closest && e.target.closest('.grip')) return; anim(el, [{ transform: 'translateX(0)' }, { transform: 'translateX(-6px)' }, { transform: 'translateX(5px)' }, { transform: 'translateX(0)' }], { duration: 300 }); return; } S.deckId = el.dataset.id; S.screen = 'deck'; S.search = ''; render('push'); },
   'open-card': el => {
     const deck = getDeck(el.dataset.deck); if (!deck) return;
     const c = deck.cards.find(x => x.id === el.dataset.id);
@@ -1903,7 +1969,7 @@ function updateSearch() {
 
 document.addEventListener('input', e => {
   const t = e.target;
-  if (t.id === 'search') { S.search = t.value; updateSearch(); return; }
+  if (t.id === 'search') { S.search = t.value; if (S.reorder && S.search) { S.reorder = false; S.reorderOpen = new Set(); } updateSearch(); return; }
   if (t.id === 'flip-dur') {
     P.flipDur = Math.round(Number(t.value) * 20) / 20; applyPrefs();
     const v = document.getElementById('flip-dur-val'); if (v) v.textContent = P.flipDur.toFixed(2) + '秒';
@@ -1935,6 +2001,11 @@ document.addEventListener('change', e => {
   }
 });
 document.addEventListener('keydown', e => {
+  const g = e.target.closest && e.target.closest('.grip');
+  if (g && S.reorder && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+    e.preventDefault(); moveSibling(g.dataset.grip, g.dataset.id, e.key === 'ArrowUp' ? -1 : 1); return;
+  }
+  if (e.key === 'Escape' && S.reorder && !S.sheet && !menuState) { S.reorder = false; render(); return; }
   if (e.key === 'Escape') {
     if (menuState) { closeMenu(); return; }
     if (S.sheet) { closeSheet(false); return; }
@@ -1980,12 +2051,15 @@ document.addEventListener('pointerdown', e => {
   // 長押しメニュー
   const row = e.target.closest('.deck-row, .card-row, .folder-head');
   cancelLongPress();
-  if (row && !e.target.closest('.badge') && !menuState && !S.sheet && !row.closest('#menu-layer')) {
+  if (row && !S.reorder && !e.target.closest('.badge') && !menuState && !S.sheet && !row.closest('#menu-layer')) {
     lp = { x: e.clientX, y: e.clientY, timer: setTimeout(() => {
       lp = null; unpress(); suppressClickUntil = Date.now() + 800; openContextFor(row);
     }, 460) };
   }
   if (menuState) return;
+  // 並び替えのつまみ
+  const grip = S.reorder && S.screen === 'home' && e.target.closest('.grip');
+  if (grip) { startReorder(grip, e); return; }
   // 画面の左端から右へなぞって戻る
   if ((S.screen === 'deck' || S.screen === 'settings') && !S.sheet && e.clientX <= 24) {
     const cur = currentScreenEl();
@@ -2000,10 +2074,68 @@ document.addEventListener('pointerdown', e => {
   if (sz && !e.target.closest('button')) { const sh = document.getElementById('sheet'); if (sh) drag = { kind: 'sheet', y: e.clientY, dy: 0, el: sh, id: e.pointerId, lastY: e.clientY, lastT: e.timeStamp, v: 0 }; }
 });
 
+function startReorder(grip, e) {
+  const kind = grip.dataset.grip;
+  const item = grip.closest(kind === 'folder' ? 'section.folder' : '.deck-row');
+  const box = item && item.parentElement; if (!box) return;
+  const sel = kind === 'folder' ? 'section.folder' : '.deck-row';
+  const sibs = [...box.children].filter(n => n.matches(sel));
+  if (sibs.length < 2) return;
+  e.preventDefault(); unpress(); cancelLongPress(); clearSelection(); setDragging(true);
+  const rects = sibs.map(n => n.getBoundingClientRect());
+  const i0 = sibs.indexOf(item);
+  const next = rects[i0 + 1] || null, prev = rects[i0 - 1] || null;
+  const gap = next ? next.top - rects[i0].bottom : prev ? rects[i0].top - prev.bottom : 14;
+  const sc = item.closest('.scroll');
+  drag = { kind: 'reorder', id: e.pointerId, rk: kind, item: item, sibs: sibs, rects: rects, i0: i0, target: i0,
+    step: rects[i0].height + gap, y0: e.clientY, y: e.clientY, sc: sc, sc0: sc ? sc.scrollTop : 0, raf: 0 };
+  item.classList.add('lifted');
+  sibs.forEach(n => { if (n !== item) n.classList.add('shifting'); });
+  try { grip.setPointerCapture(e.pointerId); } catch (er) {}
+  haptic();
+  const loop = () => {  // 端に近づいたら自動でスクロール
+    const d = drag; if (!d || d.kind !== 'reorder') return;
+    if (d.sc) {
+      const r = d.sc.getBoundingClientRect();
+      const v = d.y < r.top + 90 ? -Math.ceil((r.top + 90 - d.y) / 8) : d.y > r.bottom - 120 ? Math.ceil((d.y - (r.bottom - 120)) / 8) : 0;
+      if (v) { d.sc.scrollTop += v; updateReorder(); }
+    }
+    d.raf = requestAnimationFrame(loop);
+  };
+  drag.raf = requestAnimationFrame(loop);
+}
+function updateReorder() {
+  const d = drag; if (!d || d.kind !== 'reorder') return;
+  const dy = (d.y - d.y0) + (d.sc ? d.sc.scrollTop - d.sc0 : 0);
+  d.item.style.transform = 'translateY(' + dy + 'px)';
+  const r0 = d.rects[d.i0], top = r0.top + dy, bottom = r0.bottom + dy;
+  let target = d.i0;
+  d.sibs.forEach((n, j) => {
+    if (j === d.i0) return;
+    const rj = d.rects[j], half = Math.min(rj.height, r0.height) / 2;
+    let shift = 0;
+    if (j < d.i0 && top < rj.top + half) { shift = d.step; target--; }
+    if (j > d.i0 && bottom > rj.bottom - half) { shift = -d.step; target++; }
+    n.style.transform = shift ? 'translateY(' + shift + 'px)' : '';
+  });
+  if (target !== d.target) { d.target = target; haptic(); }
+}
+function endReorder(d) {
+  cancelAnimationFrame(d.raf);
+  setDragging(false);
+  const ids = d.sibs.map(n => n.dataset.kind === 'folder' ? n.dataset.folder : n.dataset.id);
+  const moved = ids.splice(d.i0, 1)[0]; ids.splice(d.target, 0, moved);
+  d.sibs.forEach(n => { n.style.transform = ''; n.classList.remove('shifting', 'lifted'); });
+  suppressClickUntil = Date.now() + 350;
+  if (d.target !== d.i0 && applyOrder(d.rk, ids)) save();
+  render();
+}
+
 document.addEventListener('pointermove', e => {
   if (lp && Math.hypot(e.clientX - lp.x, e.clientY - lp.y) > 8) { cancelLongPress(); }
   if (pressed && drag && drag.moved) unpress();
   if (!drag || e.pointerId !== drag.id) return;
+  if (drag.kind === 'reorder') { drag.y = e.clientY; updateReorder(); return; }
   const dt = Math.max(1, e.timeStamp - drag.lastT);
   if (drag.kind === 'card') {
     const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
@@ -2057,6 +2189,7 @@ function endDrag(e) {
   if (!drag || (e && e.pointerId !== drag.id)) return;
   const d = drag; drag = null;
   setDragging(false);
+  if (d.kind === 'reorder') { endReorder(d); return; }
   if (d.kind === 'card') {
     if (!d.moved) {
       if (d.type !== 'mouse' && e && e.type === 'pointerup' && e.timeStamp - d.t0 < 1200) {
@@ -2111,6 +2244,7 @@ function endDrag(e) {
 document.addEventListener('pointerup', endDrag);
 ['touchstart', 'touchmove'].forEach(type => document.addEventListener(type, e => {
   if (S.screen === 'study' && e.target.closest && e.target.closest('#flip-wrap')) e.preventDefault();
+  else if (S.reorder && e.target.closest && e.target.closest('.grip')) e.preventDefault();
 }, { passive: false }));
 document.addEventListener('pointercancel', endDrag);
 // 入力欄以外では、文字の選択を始めさせない（iPhoneの長押しで青く選択されるのを防ぐ）
@@ -2131,7 +2265,7 @@ document.addEventListener('selectionchange', () => {
 });
 document.addEventListener('contextmenu', e => {
   const row = e.target.closest('.deck-row, .card-row, .folder-head');
-  if (!row || row.closest('#menu-layer')) return;
+  if (!row || row.closest('#menu-layer') || S.reorder) { if (S.reorder) e.preventDefault(); return; }
   e.preventDefault(); cancelLongPress(); unpress();
   suppressClickUntil = Date.now() + 500;
   openContextFor(row);
