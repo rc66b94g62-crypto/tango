@@ -175,6 +175,14 @@ svg{display:block; flex-shrink:0;}
 .lifted > .face, .lifted > .folder-head{box-shadow:0 14px 36px rgba(0,0,0,.22) !important; transform:scale(1.02);}
 .shifting{transition:transform .28s var(--smooth);}
 .list-head .text-btn.done{font-weight:600;}
+.chunk-row{display:flex; align-items:center; gap:10px; padding:0 12px 0 0; min-height:58px; border-bottom:.5px solid var(--sep);}
+.chunk-row:last-child{border-bottom:0;}
+.chunk-main{flex:1; display:flex; flex-direction:column; align-items:flex-start; gap:6px; min-height:58px; justify-content:center; padding:8px 0 8px 16px; border:0; background:transparent; color:var(--label); text-align:left;}
+.chunk-main .cr{font-size:1.06rem; font-weight:700;}
+.chunk-main .cbar{display:block; width:100%; max-width:220px; height:5px; border-radius:3px; background:var(--fill, rgba(120,120,128,.2)); overflow:hidden;}
+.chunk-main .cbar > span{display:block; height:100%; background:var(--green); border-radius:3px;}
+.chunk-main .cn{font-size:.8rem; color:var(--label2);}
+.chunk-sep{padding:10px 16px 6px; font-size:.78rem; font-weight:700; color:var(--label2); background:var(--bg2, transparent); border-bottom:.5px solid var(--sep);}
 .card-hint{margin:8px 32px 0; font-size:.765rem; color:var(--label2);}
 
 /* フォルダ */
@@ -516,8 +524,9 @@ function kindOf(deck) {
   };
 }
 
-const APP_VERSION = '1.9.0';
+const APP_VERSION = '1.10.0';
 const CHANGELOG = [
+  { v: '1.10.0', d: '2026-11-26', items: ['単語帳を好きな枚数ごとに区切って学習できるように', '区切りごとに覚えた枚数を表示'] },
   { v: '1.9.0', d: '2026-11-14', items: ['単語帳とフォルダを並び替えられるように', '学習中のカードをその場で編集できるように', '単語帳の中でカードを押すと編集できることを案内'] },
   { v: '1.8.0', d: '2026-11-11', items: ['設定画面にバージョンと変更履歴を表示', '更新したときに一度だけお知らせを表示'] },
   { v: '1.7.1', d: '2026-11-11', items: ['長押しで文字が青く選択されないように修正'] },
@@ -656,7 +665,7 @@ const haptic = (() => {
 /* ===== データ ===== */
 function makeCard(f, b, s) { return { id: uid(), f: f, b: b, s: s || '', known: false, miss: 0 }; }
 function makeDeck(name, kind, color) {
-  return { id: uid(), name: name, kind: kind, color: color, cards: [], settings: { dir: 0, shuffle: true, speak: true }, created: Date.now() };
+  return { id: uid(), name: name, kind: kind, color: color, cards: [], settings: { dir: 0, shuffle: true, speak: true, chunk: 0 }, created: Date.now() };
 }
 function sampleDecks() {
   const en = makeDeck('サンプル（英単語）', 'en', 'indigo');
@@ -704,7 +713,7 @@ function normalize(raw) {
     if (d.created) deck.created = Number(d.created) || Date.now();
     deck.folderId = d.folderId && folderIds.has(String(d.folderId)) ? String(d.folderId) : null;
     const st = d.settings || {};
-    deck.settings = { dir: st.dir === 1 ? 1 : 0, shuffle: st.shuffle !== false, speak: st.speak !== false };
+    deck.settings = { dir: st.dir === 1 ? 1 : 0, shuffle: st.shuffle !== false, speak: st.speak !== false, chunk: cleanChunk(st.chunk) };
     (Array.isArray(d.cards) ? d.cards : []).forEach(c => {
       if (!c || !c.f) return;
       const card = makeCard(String(c.f), String(c.b || ''), String(c.s || ''));
@@ -1024,12 +1033,24 @@ function demoFlip() {
 }
 
 /* --- 単語帳の詳細 --- */
+function cleanChunk(n) { n = Math.floor(Number(n)); return n >= 1 && n <= 999 ? n : 0; }
+function chunkOf(deck) { return cleanChunk(deck && deck.settings && deck.settings.chunk); }
+// 区切りの一覧（[始まり, 終わり) の番号）
+function chunkRanges(deck) {
+  const n = chunkOf(deck), t = deck.cards.length, out = [];
+  if (!n || t <= n) return out;
+  for (let i = 0; i < t; i += n) out.push([i, Math.min(i + n, t)]);
+  return out;
+}
+function rangeLabel(r) { return (r[0] + 1) + '〜' + r[1]; }
 function renderDeck(deck) {
   const K = kindOf(deck), M = !!K.math;
   const k = knownCount(deck), t = deck.cards.length, later = t - k;
   const sw = (key, label) => '<div class="cell"><span id="lbl-' + key + '">' + label + '</span>' +
     '<button class="switch" role="switch" aria-labelledby="lbl-' + key + '" aria-checked="' + (deck.settings[key] ? 'true' : 'false') + '" data-action="toggle-setting" data-key="' + key + '"></button></div>';
-  const rows = deck.cards.length ? deck.cards.map(c =>
+  const ranges = chunkRanges(deck), cn = chunkOf(deck);
+  const rows = deck.cards.length ? deck.cards.map((c, i) =>
+    (ranges.length && i % cn === 0 ? '<div class="chunk-sep">' + rangeLabel(ranges[i / cn]) + '</div>' : '') +
     '<div class="card-row"><button class="row-main" data-action="edit-card" data-id="' + esc(c.id) + '" aria-label="' + esc(searchText(c.f)) + '、' + esc(searchText(c.b)) + '、編集">' +
     '<span class="rf" style="' + deckStyle(deck) + '">' + richText(c.f, M) + '</span><span class="rb">' + richText(c.b, M) + '</span></button>' +
     (c.known
@@ -1050,7 +1071,19 @@ function renderDeck(deck) {
     '<div class="group settings">' +
       '<div class="cell tight"><span>出題の向き</span><button class="cell-btn" data-action="cycle-dir" aria-label="出題の向きを変更。現在 ' + K.seg[deck.settings.dir] + '"><span>' + K.seg[deck.settings.dir] + '</span>' + I.updown + '</button></div>' +
       sw('shuffle', 'シャッフル') + (K.lang ? sw('speak', K.speakLabel) : '') +
+      '<div class="cell tight"><span>区切る枚数</span><button class="cell-btn" data-action="chunk-menu" aria-haspopup="menu" aria-label="区切る枚数を変更。現在 ' + (cn ? cn + '枚ごと' : '区切らない') + '"><span>' + (cn ? cn + '枚ごと' : '区切らない') + '</span>' + I.updown + '</button></div>' +
     '</div>' +
+    (ranges.length ? '<div class="list-head"><h2>区切り</h2></div>' +
+      '<p class="card-hint" style="margin:-4px 20px 10px">左を押すとその区切りをすべて、右の「まだ」を押すとまだのカードだけ学習します。</p>' +
+      '<div class="group">' + ranges.map((r, ri) => {
+        const cs = deck.cards.slice(r[0], r[1]), kn = cs.filter(c => c.known).length, lt = cs.length - kn;
+        return '<div class="chunk-row"><button class="chunk-main" data-action="chunk-study" data-i="' + ri + '" data-mode="all" aria-label="' + rangeLabel(r) + 'をすべて学習。覚えた ' + kn + ' / ' + cs.length + '">' +
+          '<span class="cr rounded">' + rangeLabel(r) + '</span><span class="cbar" aria-hidden="true"><span style="width:' + Math.round(kn / cs.length * 100) + '%"></span></span>' +
+          '<span class="cn">覚えた ' + kn + ' / ' + cs.length + '</span></button>' +
+          (lt ? '<button class="badge later" data-action="chunk-study" data-i="' + ri + '" data-mode="later" aria-label="' + rangeLabel(r) + 'のまだ ' + lt + '枚だけ学習">' + I.againS + 'まだ ' + lt + '</button>'
+              : '<span class="badge known" aria-label="すべて覚えた">' + I.checkS + '完了</span>') +
+          '</div>';
+      }).join('') + '</div>' : '') +
     '<div class="list-head"><h2>カード</h2><button class="text-btn" data-action="add-cards">' + I.plusS + '<span>追加</span></button></div>' +
     (deck.cards.length ? '<p class="card-hint" style="margin:-4px 20px 10px">カードを押すと内容を編集できます。長押しでほかの操作も出ます。</p>' : '') +
     (rows ? '<div class="group">' + rows + '</div>' : '<div class="empty">カードがありません。「追加」から入れてください。</div>') +
@@ -1122,7 +1155,7 @@ function renderStudy() {
   const fl = K.labels[st.dir === 0 ? 0 : 1], bl = K.labels[st.dir === 0 ? 1 : 0];
   const pos = Math.min(st.done + 1, st.total);
   const pct = Math.round(st.done / st.total * 100);
-  const title = st.deckId ? deck.name : getFolder(st.folderId) ? getFolder(st.folderId).name : '今日の復習';
+  const title = st.deckId ? deck.name + (st.range ? '（' + rangeLabel(st.range) + '）' : '') : getFolder(st.folderId) ? getFolder(st.folderId).name : '今日の復習';
   return '<div class="screen study"><div class="inner">' +
     '<div class="topbar three">' + closeBtn +
       '<div class="counter"><b>' + pos + ' / ' + st.total + '</b><span class="bar" role="progressbar" aria-label="進み具合" aria-valuemin="0" aria-valuemax="' + st.total + '" aria-valuenow="' + st.done + '"><span style="width:' + pct + '%"></span></span></div>' +
@@ -1282,6 +1315,13 @@ function renderSheet() {
       '</div>' +
       '<div class="group" style="margin-top:20px"><button class="pick-row add" data-action="move-new"><span class="pic" style="--deck: var(--accent)">' + I.folderAdd + '</span><span class="pname">新しいフォルダを作って入れる</span></button></div>';
     return sheetFrame('フォルダに移動', body, null, false);
+  }
+  if (sh.type === 'chunk') {
+    const deck = getDeck(sh.deckId); if (!deck) return '';
+    const body =
+      '<div class="group"><label class="cell"><span class="cell-label">1区切りの枚数</span><input class="field" data-input="chunk-n" type="number" inputmode="numeric" min="0" max="999" placeholder="例：12" value="' + esc(sh.n) + '"></label></div>' +
+      '<p class="group-label">「' + esc(deck.name) + '」（' + deck.cards.length + '枚）を、上から順にこの枚数ずつ区切ります。0にすると区切りません。</p>';
+    return sheetFrame('区切る枚数', body, '決定', false);
   }
   if (sh.type === 'changelog') {
     const body = CHANGELOG.map((c, i) =>
@@ -1452,16 +1492,17 @@ function updateAddPreview() {
 }
 
 /* ===== 学習の進行 ===== */
-function startStudy(deckId, mode, folderId) {
+function startStudy(deckId, mode, folderId, range) {
   const decks = deckId ? [getDeck(deckId)] : folderId ? allDecksIn(folderId) : S.data.decks;
   const items = [];
-  decks.forEach(d => d.cards.forEach(c => { if (mode === 'all' || !c.known) items.push({ d: d.id, c: c.id }); }));
+  if (!(deckId && range)) range = null;
+  decks.forEach(d => (range ? d.cards.slice(range[0], range[1]) : d.cards).forEach(c => { if (mode === 'all' || !c.known) items.push({ d: d.id, c: c.id }); }));
   if (!items.length) { toast(mode === 'later' ? '「まだ」のカードはありません' : 'カードがありません'); return; }
   const shuffle = deckId ? getDeck(deckId).settings.shuffle : true;
   if (shuffle) shuffleArr(items);
   const from = S.screen;
   const returnTo = from === 'study' && S.study ? S.study.returnTo : (from === 'deck' ? 'deck' : 'home');
-  S.study = { deckId: deckId, folderId: folderId || null, mode: mode, queue: items, total: items.length, done: 0, knownCount: 0, laterCount: 0, flipped: false, dir: deckId ? getDeck(deckId).settings.dir : 0, finished: false, returnTo: returnTo, busy: false };
+  S.study = { deckId: deckId, folderId: folderId || null, range: range, mode: mode, queue: items, total: items.length, done: 0, knownCount: 0, laterCount: 0, flipped: false, dir: deckId ? getDeck(deckId).settings.dir : 0, finished: false, returnTo: returnTo, busy: false };
   S.screen = 'study';
   render(from === 'study' ? null : 'present');
   if (from === 'study') cardEnter();
@@ -1813,6 +1854,20 @@ const actions = {
   'back': () => { S.screen = 'home'; S.deckId = null; render('pop'); },
   'review': () => startStudy(null, 'later'),
   'study': el => startStudy(S.deckId, el.dataset.mode),
+  'chunk-study': el => {
+    const d = getDeck(S.deckId); if (!d) return;
+    const r = chunkRanges(d)[+el.dataset.i]; if (!r) return;
+    startStudy(d.id, el.dataset.mode === 'later' ? 'later' : 'all', null, r);
+  },
+  'chunk-menu': el => {
+    const d = getDeck(S.deckId); if (!d) return;
+    const cur = chunkOf(d);
+    const set = n => { d.settings.chunk = n; save(); haptic(); render(); };
+    const opts = [5, 10, 15, 20, 25, 30, 50];
+    openMenu(el, [{ label: '区切らない', icon: cur ? '' : I.check, run: () => set(0) }, '-']
+      .concat(opts.map(n => ({ label: n + '枚ごと', icon: cur === n ? I.check : '', run: () => set(n) })))
+      .concat(['-', { label: '枚数を入力…' + (cur && opts.indexOf(cur) < 0 ? '（今 ' + cur + '枚）' : ''), icon: cur && opts.indexOf(cur) < 0 ? I.check : I.pencil, run: () => { S.sheet = { type: 'chunk', key: 'chunk-' + d.id, deckId: d.id, n: cur ? String(cur) : '' }; renderOverlay(); } }]));
+  },
   'cycle-dir': () => {
     const d = getDeck(S.deckId); d.settings.dir = d.settings.dir ? 0 : 1; save(); haptic(); render();
     const lab = document.querySelector('[data-action="cycle-dir"] span');
@@ -1907,6 +1962,12 @@ const actions = {
         render(from === 'deck' ? null : 'push');
         toast('「' + name + '」を作りました');
       }
+    } else if (sh.type === 'chunk') {
+      const d = getDeck(sh.deckId); if (!d) { closeSheet(true); return; }
+      const raw = String(sh.n).trim(), v = Math.floor(Number(raw));
+      if (raw === '' || !(v >= 0 && v <= 999)) { toast('0〜999の数字を入力してください'); return; }
+      d.settings.chunk = cleanChunk(v); save(); haptic(); closeSheet(true); render();
+      toast(v ? v + '枚ごとに区切りました' : '区切りをなくしました');
     } else if (sh.type === 'folder') {
       const name = sh.name.trim();
       if (!name) {
@@ -1948,7 +2009,7 @@ const actions = {
     autoSpeak();
   },
   'study-close': () => closeStudy(),
-  'again': () => startStudy(S.study.deckId, 'later', S.study.folderId)
+  'again': () => startStudy(S.study.deckId, 'later', S.study.folderId, S.study.range)
 };
 
 document.addEventListener('click', e => {
@@ -1979,6 +2040,7 @@ document.addEventListener('input', e => {
   if (k === 'add-text') { S.sheet.text = t.value; updateAddPreview(); }
   else if (k === 'deck-name') S.sheet.name = t.value;
   else if (k === 'folder-name') S.sheet.name = t.value;
+  else if (k === 'chunk-n') S.sheet.n = t.value;
   else if (k === 'qa-f') S.sheet.qa.f = t.value.slice(0, 12);
   else if (k === 'qa-b') S.sheet.qa.b = t.value.slice(0, 12);
   else if (k === 'card-f') S.sheet.f = t.value;
